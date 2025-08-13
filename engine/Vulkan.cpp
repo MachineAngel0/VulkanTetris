@@ -140,18 +140,15 @@ void key_callback(GLFWwindow* window)
             //printf("button pressed\n");
             //printf("creating a quad\n");
 
-            for (int i = 0; i < 50; i++)
-            {
-                // Generate random position and color for the new quad
-                float random_x = ((rand() % 200) - 100) / 100.0f; // Random between -1 and 1
-                float random_y = ((rand() % 200) - 100) / 100.0f;
-                float random_r = (rand() % 100) / 100.0f;
-                float random_g = (rand() % 100) / 100.0f;
-                float random_b = (rand() % 100) / 100.0f;
+            // Generate random position and color for the new quad
+            float random_x = ((rand() % 200) - 100) / 100.0f; // Random between -1 and 1
+            float random_y = ((rand() % 200) - 100) / 100.0f;
+            float random_r = (rand() % 100) / 100.0f;
+            float random_g = (rand() % 100) / 100.0f;
+            float random_b = (rand() % 100) / 100.0f;
 
-                add_quad(glm::vec2{random_x, random_y}, glm::vec3{random_r, random_g, random_b});
-                e_key_pressed = true;
-            }
+            add_quad(glm::vec2{random_x, random_y}, glm::vec3{random_r, random_g, random_b});
+            e_key_pressed = true;
         }
     }
     else
@@ -1795,57 +1792,36 @@ void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_
 {
      if (!vertex_buffer_needs_update) return;
 
-    // Calculate sizes for the data we actually want to update
-    VkDeviceSize vertex_data_size = sizeof(Vertex) * dynamic_vertices.size();
-    VkDeviceSize index_data_size = sizeof(uint16_t) * dynamic_indices.size();
+    // Only copy initial vertices data, but allocate full buffer
+    VkDeviceSize current_vertex_data_size = sizeof(vertices[0]) * dynamic_vertices.size();
 
-    // Update vertex buffer
-    if (vertex_data_size > 0) {
-        VkBuffer vertex_staging_buffer;
-        VkDeviceMemory vertex_staging_buffer_memory;
+    vkMapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, 0, vertex_buffer_capacity, 0, &data_vertex);
 
-        create_buffer(vulkan_context, vertex_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                      vertex_staging_buffer, vertex_staging_buffer_memory);
+    // Then copy initial data
+    memcpy(data_vertex, dynamic_vertices.data(), current_vertex_data_size);
+    vkUnmapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory);
 
-        void* vertex_data;
-        vkMapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, 0, vertex_data_size, 0, &vertex_data);
-        memcpy(vertex_data, dynamic_vertices.data(), vertex_data_size);
-        vkUnmapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory);
+    // Copy entire buffer (including zeros for unused space)
+    copy_buffer(vulkan_context, command_buffer_context, vertex_staging_buffer, command_buffer_context.vertex_buffer,
+                vertex_buffer_capacity);
 
-        // Copy only the used portion to the pre-allocated buffer
-        copy_buffer_region(vulkan_context, command_buffer_context, vertex_staging_buffer,
-                          command_buffer_context.vertex_buffer, vertex_data_size, 0, 0);
 
-        vkDestroyBuffer(vulkan_context.logical_device, vertex_staging_buffer, nullptr);
-        vkFreeMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, nullptr);
-    }
+    // Only copy initial indices data, but allocate full buffer
+    VkDeviceSize current_index_data_size = sizeof(indices[0]) * dynamic_indices.size();
 
-    // Update index buffer
-    if (index_data_size > 0) {
-        VkBuffer index_staging_buffer;
-        VkDeviceMemory index_staging_buffer_memory;
+    vkMapMemory(vulkan_context.logical_device, index_staging_buffer_memory, 0, index_buffer_capacity, 0, &data_index);
 
-        create_buffer(vulkan_context, index_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                      index_staging_buffer, index_staging_buffer_memory);
+    // Then copy initial data
+    memcpy(data_index, dynamic_indices.data(), current_index_data_size);
 
-        void* index_data;
-        vkMapMemory(vulkan_context.logical_device, index_staging_buffer_memory, 0, index_data_size, 0, &index_data);
-        memcpy(index_data, dynamic_indices.data(), index_data_size);
-        vkUnmapMemory(vulkan_context.logical_device, index_staging_buffer_memory);
+    vkUnmapMemory(vulkan_context.logical_device, index_staging_buffer_memory);
 
-        // Copy only the used portion to the pre-allocated buffer
-        copy_buffer_region(vulkan_context, command_buffer_context, index_staging_buffer,
-                          command_buffer_context.index_buffer, index_data_size, 0, 0);
-
-        vkDestroyBuffer(vulkan_context.logical_device, index_staging_buffer, nullptr);
-        vkFreeMemory(vulkan_context.logical_device, index_staging_buffer_memory, nullptr);
-    }
+    // Copy entire buffer
+    copy_buffer(vulkan_context, command_buffer_context, index_staging_buffer, command_buffer_context.index_buffer,
+                index_buffer_capacity);
 
     vertex_buffer_needs_update = false;
-    printf("Updated buffers in-place (vertices: %zu, indices: %zu)\n",
-           dynamic_vertices.size(), dynamic_indices.size());
+
 }
 
 void copy_buffer_region(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context,
@@ -1964,42 +1940,36 @@ void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffe
 void create_index_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
 {
     // Create buffer large enough for maximum indices, not just initial indices
-    VkDeviceSize buffer_size = sizeof(uint16_t) * MAX_INDICES;  // Use MAX_INDICES instead of indices.size()
+    index_buffer_capacity = sizeof(uint16_t) * MAX_INDICES;  // Use MAX_INDICES instead of indices.size()
 
     // Create staging buffer
-    VkBuffer staging_buffer;
-    VkDeviceMemory staging_buffer_memory;
-    create_buffer(vulkan_context, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    create_buffer(vulkan_context, index_buffer_capacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                  staging_buffer, staging_buffer_memory);
+                  index_staging_buffer, index_staging_buffer_memory);
 
     // Only copy initial indices data, but allocate full buffer
     VkDeviceSize initial_data_size = sizeof(indices[0]) * indices.size();
 
-    void* data;
-    vkMapMemory(vulkan_context.logical_device, staging_buffer_memory, 0, buffer_size, 0, &data);
+    vkMapMemory(vulkan_context.logical_device, index_staging_buffer_memory, 0, index_buffer_capacity, 0, &data_index);
 
     // Zero out the entire buffer first
-    memset(data, 0, buffer_size);
+    memset(data_index, 0, index_buffer_capacity);
     // Then copy initial data
-    memcpy(data, indices.data(), initial_data_size);
+    memcpy(data_index, indices.data(), initial_data_size);
 
-    vkUnmapMemory(vulkan_context.logical_device, staging_buffer_memory);
+    vkUnmapMemory(vulkan_context.logical_device, index_staging_buffer_memory);
 
     // Create device local buffer with full size
-    create_buffer(vulkan_context, buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+    create_buffer(vulkan_context, index_buffer_capacity, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, command_buffer_context.index_buffer,
                   command_buffer_context.index_buffer_memory);
 
     // Copy entire buffer
-    copy_buffer(vulkan_context, command_buffer_context, staging_buffer, command_buffer_context.index_buffer,
-                buffer_size);
+    copy_buffer(vulkan_context, command_buffer_context, index_staging_buffer, command_buffer_context.index_buffer,
+                index_buffer_capacity);
 
-    // Clean up staging buffer
-    vkDestroyBuffer(vulkan_context.logical_device, staging_buffer, nullptr);
-    vkFreeMemory(vulkan_context.logical_device, staging_buffer_memory, nullptr);
 
-    std::cout << "CREATED INDEX BUFFER SUCCESS (Size: " << buffer_size << " bytes for " << MAX_INDICES << " indices)\n";
+    std::cout << "CREATED INDEX BUFFER SUCCESS (Size: " << index_buffer_capacity << " bytes for " << MAX_INDICES << " indices)\n";
 }
 
 
@@ -2007,43 +1977,35 @@ void create_vertex_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Con
 {
 
     // Create buffer large enough for maximum vertices, not just initial vertices
-    VkDeviceSize buffer_size = sizeof(Vertex) * MAX_VERTICES;  // Use MAX_VERTICES instead of vertices.size()
+    vertex_buffer_capacity = sizeof(Vertex) * MAX_VERTICES;  // Use MAX_VERTICES instead of vertices.size()
 
-    // Create staging buffer for initial data
-    VkBuffer staging_buffer;
-    VkDeviceMemory staging_buffer_memory;
 
-    create_buffer(vulkan_context, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    create_buffer(vulkan_context, vertex_buffer_capacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                  staging_buffer, staging_buffer_memory);
+                  vertex_staging_buffer, vertex_staging_buffer_memory);
 
     // Only copy initial vertices data, but allocate full buffer
     VkDeviceSize initial_data_size = sizeof(vertices[0]) * vertices.size();
 
-    void* data;
-    vkMapMemory(vulkan_context.logical_device, staging_buffer_memory, 0, buffer_size, 0, &data);
+    vkMapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, 0, vertex_buffer_capacity, 0, &data_vertex);
 
     // Zero out the entire buffer first
-    memset(data, 0, buffer_size);
+    memset(data_vertex, 0, vertex_buffer_capacity);
     // Then copy initial data
-    memcpy(data, vertices.data(), initial_data_size);
-
-    vkUnmapMemory(vulkan_context.logical_device, staging_buffer_memory);
+    memcpy(data_vertex, vertices.data(), initial_data_size);
+    vkUnmapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory);
 
     // Create device local buffer with full size
-    create_buffer(vulkan_context, buffer_size,
+    create_buffer(vulkan_context, vertex_buffer_capacity,
                   VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, command_buffer_context.vertex_buffer,
                   command_buffer_context.vertex_buffer_memory);
 
     // Copy entire buffer (including zeros for unused space)
-    copy_buffer(vulkan_context, command_buffer_context, staging_buffer, command_buffer_context.vertex_buffer,
-                buffer_size);
+    copy_buffer(vulkan_context, command_buffer_context, vertex_staging_buffer, command_buffer_context.vertex_buffer,
+                vertex_buffer_capacity);
 
-    // Clean up staging buffer
-    vkDestroyBuffer(vulkan_context.logical_device, staging_buffer, nullptr);
-    vkFreeMemory(vulkan_context.logical_device, staging_buffer_memory, nullptr);
 
-    std::cout << "CREATED VERTEX BUFFER SUCCESS (Size: " << buffer_size << " bytes for " << MAX_VERTICES << " vertices)\n";
+    std::cout << "CREATED VERTEX BUFFER SUCCESS (Size: " << vertex_buffer_capacity << " bytes for " << MAX_VERTICES << " vertices)\n";
 
 }

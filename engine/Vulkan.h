@@ -293,8 +293,13 @@ inline bool e_key_pressed = false;
 
 static VkBuffer vertex_staging_buffer;
 static VkDeviceMemory vertex_staging_buffer_memory;
+static void* data_vertex;
+static VkDeviceSize vertex_buffer_capacity = 0;
+
 static VkBuffer index_staging_buffer;
 static VkDeviceMemory index_staging_buffer_memory;
+static void* data_index;
+static VkDeviceSize index_buffer_capacity = 0;
 
 const uint32_t max_object_count = 1000;
 const uint32_t vertices_per_object = 4;
