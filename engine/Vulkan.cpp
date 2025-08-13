@@ -141,13 +141,16 @@ void key_callback(GLFWwindow* window)
             //printf("creating a quad\n");
 
             // Generate random position and color for the new quad
-            float random_x = ((rand() % 200) - 100) / 100.0f; // Random between -1 and 1
-            float random_y = ((rand() % 200) - 100) / 100.0f;
-            float random_r = (rand() % 100) / 100.0f;
-            float random_g = (rand() % 100) / 100.0f;
-            float random_b = (rand() % 100) / 100.0f;
+            for (int i = 0; i < 50; i++)
+            {
+                float random_x = ((rand() % 200) - 100) / 100.0f; // Random between -1 and 1
+                float random_y = ((rand() % 200) - 100) / 100.0f;
+                float random_r = (rand() % 100) / 100.0f;
+                float random_g = (rand() % 100) / 100.0f;
+                float random_b = (rand() % 100) / 100.0f;
 
-            add_quad(glm::vec2{random_x, random_y}, glm::vec3{random_r, random_g, random_b});
+                add_quad(glm::vec2{random_x, random_y}, glm::vec3{random_r, random_g, random_b});
+            }
             e_key_pressed = true;
         }
     }
@@ -198,7 +201,7 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
                 Semaphore_Fences_Context& semaphore_fences_info)
 {
     //begin clock
-    auto start = std::chrono::system_clock::now();
+    auto start = std::chrono::steady_clock::now();
 
     /*
     At a high level, rendering a frame in Vulkan consists of a common set of steps:
@@ -306,10 +309,10 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
     semaphore_fences_info.currentFrame = (semaphore_fences_info.currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
     //get clock again, compare with start clock
-    auto end = std::chrono::system_clock::now();
+    auto end = std::chrono::steady_clock::now();
     //convert to microseconds (integer), and then come back to miliseconds
-    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    printf("%fms\n", elapsed.count() / 1000.f);
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    printf("%fms\n", elapsed/1000.0f);
 }
 
 void init_window(GLFW_Window_Context& context)
@@ -1783,40 +1786,38 @@ void add_quad(glm::vec2 pos, glm::vec3 color)
 
     vertex_buffer_needs_update = true;
 
+    /*
     printf("Added quad at (%.2f, %.2f) with color (%.2f, %.2f, %.2f)\n",
            pos.x, pos.y, color.r, color.g, color.b);
     printf("Total vertices: %zu, Total indices: %zu\n", dynamic_vertices.size(), dynamic_indices.size());
+    */
 }
 
 void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
 {
+    //TODO: so while not happening rn, we can use an offset to only copy the new data, instead of the whole buffer over
+    //so instead of copy buffer we can use copy_buffer_region, which ill have to double check how it works
      if (!vertex_buffer_needs_update) return;
 
-    // Only copy initial vertices data, but allocate full buffer
+    // Only copy we are currently using vertices data
     VkDeviceSize current_vertex_data_size = sizeof(vertices[0]) * dynamic_vertices.size();
 
+    //map and copy data
     vkMapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, 0, vertex_buffer_capacity, 0, &data_vertex);
-
-    // Then copy initial data
     memcpy(data_vertex, dynamic_vertices.data(), current_vertex_data_size);
     vkUnmapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory);
 
-    // Copy entire buffer (including zeros for unused space)
+    //transfer from storage buffer/cpu buffer to gpu buffer
     copy_buffer(vulkan_context, command_buffer_context, vertex_staging_buffer, command_buffer_context.vertex_buffer,
                 vertex_buffer_capacity);
 
 
-    // Only copy initial indices data, but allocate full buffer
     VkDeviceSize current_index_data_size = sizeof(indices[0]) * dynamic_indices.size();
 
     vkMapMemory(vulkan_context.logical_device, index_staging_buffer_memory, 0, index_buffer_capacity, 0, &data_index);
-
-    // Then copy initial data
     memcpy(data_index, dynamic_indices.data(), current_index_data_size);
-
     vkUnmapMemory(vulkan_context.logical_device, index_staging_buffer_memory);
 
-    // Copy entire buffer
     copy_buffer(vulkan_context, command_buffer_context, index_staging_buffer, command_buffer_context.index_buffer,
                 index_buffer_capacity);
 
