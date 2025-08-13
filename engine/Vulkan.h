@@ -290,9 +290,29 @@ inline std::vector<uint16_t> dynamic_indices;
 inline bool vertex_buffer_needs_update = false;
 inline bool e_key_pressed = false;
 
+
+static VkBuffer vertex_staging_buffer;
+static VkDeviceMemory vertex_staging_buffer_memory;
+static VkBuffer index_staging_buffer;
+static VkDeviceMemory index_staging_buffer_memory;
+
+const uint32_t max_object_count = 1000;
+const uint32_t vertices_per_object = 4;
+const uint32_t indices_per_object = 6;
+const uint32_t MAX_VERTICES = max_object_count * vertices_per_object;
+const uint32_t MAX_INDICES = max_object_count * indices_per_object;
+
 void add_quad(glm::vec2 pos, glm::vec3 color);
-void update_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
 std::vector<Vertex> create_quad(glm::vec2 pos, glm::vec3 color);
 
+
+void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+void create_vertex_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+void create_index_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+
+void copy_buffer_region(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context,
+                        VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
+                        VkDeviceSize srcOffset, VkDeviceSize dstOffset);
 
 #endif //VULKANFROMSPECS_H
