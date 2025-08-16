@@ -16,10 +16,15 @@ include_directories(VulkanTetris ./lib/)
 
 
 add_executable(VulkanTetris main.cpp
-        engine/Vulkan.h
-        engine/Vulkan.cpp
+        engine/Renderer.h
+        engine/Renderer.cpp
         engine/Tetris.cpp
-        engine/Tetris.h)
+        engine/Tetris.h
+        engine/Mesh.cpp
+        engine/Mesh.h
+        engine/clock.cpp
+        engine/clock.h
+)
 
 
 

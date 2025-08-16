@@ -14,11 +14,17 @@
 
 #include <glm/glm.hpp>
 
+
+struct Game_State;
+struct VERTEX_DYNAMIC_INFO;
+
+
 //TODO: move out when done
-void key_callback(GLFWwindow* window);
+void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_info);
 
 
-struct Vertex {
+struct Vertex
+{
     glm::vec2 pos;
     glm::vec3 color;
 };
@@ -36,11 +42,25 @@ const std::vector<uint16_t> indices = {
     0, 1, 2, 2, 3, 0
 };
 
+struct UniformBufferObject {
+    alignas(16) glm::mat4 model;
+    alignas(16) glm::mat4 view;
+    alignas(16) glm::mat4 proj;
+};
 
 
+struct VERTEX_DYNAMIC_INFO
+{
+    std::vector<Vertex> dynamic_vertices{};
+    std::vector<uint16_t> dynamic_indices{};
+
+    bool vertex_buffer_should_update = false;
+
+};
 
 
-static VkVertexInputBindingDescription getBindingDescription() {
+static VkVertexInputBindingDescription getBindingDescription()
+{
     VkVertexInputBindingDescription bindingDescription{};
     bindingDescription.binding = 0;
     bindingDescription.stride = sizeof(Vertex);
@@ -53,7 +73,8 @@ static VkVertexInputBindingDescription getBindingDescription() {
     return bindingDescription;
 }
 
-static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+{
     std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
 
     //position
@@ -77,11 +98,6 @@ static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions
 *Allocate a descriptor set from a descriptor pool
 *Bind the descriptor set during rendering
  */
-struct UniformBufferObject {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
-};
 
 
 
@@ -109,7 +125,6 @@ struct GLFW_Window_Context
     const int WIDTH = 800;
     const int HEIGHT = 600;
     bool framebufferResized = false;
-
 };
 
 //TODO: Split things out where appropriate
@@ -127,7 +142,8 @@ struct Vulkan_Context
 };
 
 
-struct SwapChainSupportDetails {
+struct SwapChainSupportDetails
+{
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
@@ -145,7 +161,8 @@ struct Swapchain_Context
     std::vector<VkImageView> swap_chain_image_views;
 };
 
-struct QueueFamilyIndices{
+struct QueueFamilyIndices
+{
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
 };
@@ -172,7 +189,6 @@ struct Command_Buffer_Context
 };
 
 
-
 struct Semaphore_Fences_Context
 {
     std::vector<VkSemaphore> image_available_semaphore;
@@ -188,47 +204,59 @@ void run();
 
 
 void main_loop(Vulkan_Context& vulkan_context,
-                 GLFW_Window_Context& window_info,
-                 Swapchain_Context& swapchain_context,
-                 Graphics_Context& graphics_context,
-                 Command_Buffer_Context& command_buffer_context,
-                 Semaphore_Fences_Context& semaphore_fences_context);
+               GLFW_Window_Context& window_info,
+               Swapchain_Context& swapchain_context,
+               Graphics_Context& graphics_context,
+               Command_Buffer_Context& command_buffer_context,
+               Semaphore_Fences_Context& semaphore_fences_context, VERTEX_DYNAMIC_INFO& vertex_info, Game_State* game_state);
 
 
 /**/
 void init_vulkan(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
-    Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
-    Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context);
-//ensure we have validation layer support
-bool ensure_validation_layer_support();
-std::vector<const char*> getRequiredExtensions();
-
-
-void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context, Swapchain_Context& swapchain_context,
-                Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_info);
-/*CLEANUP*/
-void cleanup(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
                  Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
                  Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context);
+
+//ensure we have validation layer support
+bool ensure_validation_layer_support();
+
+std::vector<const char *> getRequiredExtensions();
+
+
+void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
+                Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
+                Command_Buffer_Context& command_buffer_context,
+                Semaphore_Fences_Context& semaphore_fences_info,
+                VERTEX_DYNAMIC_INFO& vertex_info);
+
+/*CLEANUP*/
+void cleanup(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
+             Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
+             Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context);
+
 /* GLFW WINDOW*/
 void init_window(GLFW_Window_Context& context);
+
 static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
 /* VULKAN INSTANCE*/
 void create_instance(Vulkan_Context& vulkan_context);
+
 /*DEBUG MESSAGES*/
 void create_debug_messanger(VkInstance& instance, VkDebugUtilsMessengerEXT& debugMessenger);
 
 void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);;
+
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
                                       const VkAllocationCallbacks* pAllocator,
                                       VkDebugUtilsMessengerEXT* pDebugMessenger);
+
 VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData);
+                       VkDebugUtilsMessageTypeFlagsEXT messageType,
+                       const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                       void* pUserData);
 
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
-    const VkAllocationCallbacks* pAllocator);
+                                   const VkAllocationCallbacks* pAllocator);
 
 /* SURFACE */
 void create_surface(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context);
@@ -237,38 +265,61 @@ void create_surface(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_
 void pick_physical_device(Vulkan_Context& vulkan_context);
 
 bool is_device_suitable(VkSurfaceKHR surface, VkPhysicalDevice physical_device_to_query);
+
 QueueFamilyIndices find_queue_families(VkSurfaceKHR surface, VkPhysicalDevice physical_device);
+
 bool queue_family_indices_is_complete(QueueFamilyIndices queue_family_indices);
 
 
 /* LOGICAL DEVICE */
 void create_logical_device(Vulkan_Context& vulkan_context);
+
 /* SWAPCHAIN */
 void create_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context);
-VkSurfaceFormatKHR choose_swap_surface_format(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& present_modes_available);
-/* SWAPCHAIN RECREATION */
-void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
-void cleanup_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
 
+VkSurfaceFormatKHR choose_swap_surface_format(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+
+VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& present_modes_available);
+
+/* SWAPCHAIN RECREATION */
+void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
+                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
+
+void cleanup_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
+                       Graphics_Context& graphics_context);
 
 
 /* IMAGE VIEWS */
 void create_image_views(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context);
+
 /* GRAPHICS PIPELINE*/
-void create_graphics_pipeline(VkDevice& device, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
+void create_graphics_pipeline(VkDevice& device, Swapchain_Context& swapchain_context,
+                              Graphics_Context& graphics_context);
+
 std::vector<char> read_file(const std::string& filename);
+
 VkShaderModule create_shader_module(VkDevice& logical_device, const std::vector<char>& code);
+
 /*RENDER PASS*/ //TODO: replace with dynamic rendering local read
-void create_render_pass(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
+void create_render_pass(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
+                        Graphics_Context& graphics_context);
+
 /*FRAMEBUFFER*/ //TODO: replace with dynamic rendering local read
-void create_frame_buffers(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
+void create_frame_buffers(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
+                          Graphics_Context& graphics_context);
+
 /*COMMAND POOL*/
 void create_command_pool(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+
 /*VERTEX BUFFER*/
 void create_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
-void create_buffer(Vulkan_Context& vulkan_context, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-void copy_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_index, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
+void create_buffer(Vulkan_Context& vulkan_context, VkDeviceSize size, VkBufferUsageFlags usage,
+                   VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+
+void copy_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_index, VkBuffer srcBuffer,
+                 VkBuffer dstBuffer, VkDeviceSize size);
+
 uint32_t findMemoryType(Vulkan_Context& vulkan_context, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 /*INDEX BUFFER*/
@@ -277,19 +328,25 @@ void create_index_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context&
 
 /*COMMAND BUFFER*/
 void create_command_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+
 /*RECORD BUFFER*/
-void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_Context& command_buffer_context, Graphics_Context& graphics_context, uint32_t image_index, uint32_t current_frame);
+void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_Context& command_buffer_context,
+                           Graphics_Context& graphics_context, VERTEX_DYNAMIC_INFO& vertex_info,uint32_t image_index, uint32_t current_frame);
+
 /*SEMAPHORES AND FENCES*/
 void create_sync_objects(Vulkan_Context& vulkan_context, Semaphore_Fences_Context& semaphore_fences_info);
 
 
-
 // Global dynamic vertex storage
-inline std::vector<Vertex> dynamic_vertices;
-inline std::vector<uint16_t> dynamic_indices;
-inline bool vertex_buffer_needs_update = false;
-inline bool e_key_pressed = false;
 
+
+
+
+inline bool e_key_pressed = false;
+inline bool w_key_pressed = false;
+inline bool a_key_pressed = false;
+inline bool s_key_pressed = false;
+inline bool d_key_pressed = false;
 
 static VkBuffer vertex_staging_buffer;
 static VkDeviceMemory vertex_staging_buffer_memory;
@@ -301,19 +358,21 @@ static VkDeviceMemory index_staging_buffer_memory;
 static void* data_index;
 static VkDeviceSize index_buffer_capacity = 0;
 
-const uint32_t max_object_count = 1000;
+const uint32_t max_object_count = 10000000;
 const uint32_t vertices_per_object = 4;
 const uint32_t indices_per_object = 6;
 const uint32_t MAX_VERTICES = max_object_count * vertices_per_object;
 const uint32_t MAX_INDICES = max_object_count * indices_per_object;
 
-void add_quad(glm::vec2 pos, glm::vec3 color);
-void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
-std::vector<Vertex> create_quad(glm::vec2 pos, glm::vec3 color);
 
 
-void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, VERTEX_DYNAMIC_INFO& vertex_info);
+
+
+void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, VERTEX_DYNAMIC_INFO& vertex_info);
+
 void create_vertex_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+
 void create_index_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
 
 void copy_buffer_region(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context,

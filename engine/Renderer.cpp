@@ -1,4 +1,4 @@
-﻿#include "Vulkan.h"
+﻿#include "Renderer.h"
 
 #include <chrono>
 #include <cmath>
@@ -6,7 +6,10 @@
 #include <fstream>
 #include <set>
 #include <cstring>
+#include <thread>
 
+#include "Mesh.h"
+#include "Tetris.h"
 
 
 bool get_vulkan_api_version(uint32_t& variant, uint32_t& major, uint32_t& minor, uint32_t& patch)
@@ -93,46 +96,27 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
     }
 }
 
-void run()
-{
-    Vulkan_Context vulkan_context{};
-    GLFW_Window_Context window_info{};
-    Swapchain_Context swapchain_context{};
-    Graphics_Context graphics_context{};
-    Command_Buffer_Context command_buffer_context{};
-    Semaphore_Fences_Context semaphore_fences_context{};
-
-    init_vulkan(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-                semaphore_fences_context);
-    main_loop(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-              semaphore_fences_context);
-    //TODO: cleanup
-    cleanup(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-            semaphore_fences_context);
-}
-
 void main_loop(Vulkan_Context& vulkan_context,
                GLFW_Window_Context& window_info,
                Swapchain_Context& swapchain_context,
                Graphics_Context& graphics_context,
                Command_Buffer_Context& command_buffer_context,
-               Semaphore_Fences_Context& semaphore_fences_context)
+               Semaphore_Fences_Context& semaphore_fences_context, VERTEX_DYNAMIC_INFO& vertex_info, Game_State* game_state)
 {
     while (!glfwWindowShouldClose(window_info.window))
     {
         glfwPollEvents();
-        key_callback(window_info.window);
+        key_callback(window_info.window, game_state, vertex_info);
 
         draw_frame(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-                   semaphore_fences_context);
+                   semaphore_fences_context, vertex_info);
     }
 
     vkDeviceWaitIdle(vulkan_context.logical_device);
 }
 
-void key_callback(GLFWwindow* window)
+void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_info)
 {
-
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
     {
         if (!e_key_pressed)
@@ -149,7 +133,7 @@ void key_callback(GLFWwindow* window)
                 float random_g = (rand() % 100) / 100.0f;
                 float random_b = (rand() % 100) / 100.0f;
 
-                add_quad(glm::vec2{random_x, random_y}, glm::vec3{random_r, random_g, random_b});
+                add_quad(glm::vec2{random_x, random_y}, glm::vec3{random_r, random_g, random_b}, .1f, vertex_info);
             }
             e_key_pressed = true;
         }
@@ -157,6 +141,61 @@ void key_callback(GLFWwindow* window)
     else
     {
         e_key_pressed = false;
+    }
+
+    //input keys
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        if (!w_key_pressed)
+        {
+            move_block(game_state->current_tetromino, UP, vertex_info);
+
+            w_key_pressed = true;
+        }
+    }
+    else
+    {
+        w_key_pressed = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        if (!a_key_pressed)
+        {
+            move_block(game_state->current_tetromino, LEFT, vertex_info);
+
+            a_key_pressed = true;
+        }
+    }
+    else
+    {
+        a_key_pressed = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        if (!s_key_pressed)
+        {
+            move_block(game_state->current_tetromino, DOWN, vertex_info);
+
+            //move_cube(vertex_info, game_state.current_block.id, glm::vec2{0,0.1});
+            s_key_pressed = true;
+        }
+    }
+    else
+    {
+        s_key_pressed = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        if (!d_key_pressed)
+        {
+            move_block(game_state->current_tetromino, RIGHT, vertex_info);
+
+            d_key_pressed = true;
+        }
+    }
+    else
+    {
+        d_key_pressed = false;
     }
 }
 
@@ -168,12 +207,6 @@ void init_vulkan(Vulkan_Context& vulkan_context,
                  Command_Buffer_Context& command_buffer_context,
                  Semaphore_Fences_Context& semaphore_fences_context)
 {
-
-    // Initialize dynamic vertices with the original vertices
-    dynamic_vertices = vertices;
-    dynamic_vertices.reserve(MAX_VERTICES);
-    dynamic_indices = indices;
-    dynamic_vertices.reserve(MAX_INDICES);
 
     init_window(window_info);
     create_instance(vulkan_context);
@@ -198,7 +231,7 @@ void init_vulkan(Vulkan_Context& vulkan_context,
 void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
                 Swapchain_Context& swapchain_context,
                 Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context,
-                Semaphore_Fences_Context& semaphore_fences_info)
+                Semaphore_Fences_Context& semaphore_fences_info, VERTEX_DYNAMIC_INFO& vertex_info)
 {
     //begin clock
     auto start = std::chrono::steady_clock::now();
@@ -244,13 +277,13 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
                   &semaphore_fences_info.in_flight_fence[semaphore_fences_info.currentFrame]);
 
     //update_vertex_buffer_recreate(vulkan_context, command_buffer_context);
-    update_vertex_buffer_update(vulkan_context, command_buffer_context);
+    update_vertex_buffer_update(vulkan_context, command_buffer_context, vertex_info);
 
     /* Record a command buffer which draws the scene onto that image */
 
     vkResetCommandBuffer(command_buffer_context.command_buffer[semaphore_fences_info.currentFrame], 0);
 
-    record_command_buffer(swapchain_context, command_buffer_context, graphics_context, image_index,
+    record_command_buffer(swapchain_context, command_buffer_context, graphics_context, vertex_info, image_index,
                           semaphore_fences_info.currentFrame);
 
     /*Submit the recorded command buffer*/
@@ -310,9 +343,12 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
 
     //get clock again, compare with start clock
     auto end = std::chrono::steady_clock::now();
-    //convert to microseconds (integer), and then come back to miliseconds
+    //convert to microseconds (integer), and then come back to milliseconds
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    printf("%fms\n", elapsed/1000.0f);
+
+    //printf("%fms\n", elapsed/1000.0f);
+    // Define the desired frame rate (1 second per frame)
+
 }
 
 void init_window(GLFW_Window_Context& context)
@@ -1366,7 +1402,6 @@ void create_command_pool(Vulkan_Context& vulkan_context, Command_Buffer_Context&
 }
 
 
-
 void create_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
 {
     //NOTE: You can use a seperate device for transfering the vertex buffer from CPU to GPU
@@ -1601,7 +1636,7 @@ void create_command_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Contex
 }
 
 void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_Context& command_buffer_context,
-                           Graphics_Context& graphics_context, uint32_t image_index, uint32_t current_frame)
+                           Graphics_Context& graphics_context, VERTEX_DYNAMIC_INFO& vertex_info,uint32_t image_index, uint32_t current_frame)
 {
     VkCommandBufferBeginInfo buffer_begin_info{};
     buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1669,7 +1704,8 @@ void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_
     vkCmdDrawIndexed(command_buffer_context.command_buffer[current_frame], static_cast<uint32_t>(indicies.size()),
                          1, 0, 0, 0);*/
 
-    vkCmdDrawIndexed(command_buffer_context.command_buffer[current_frame], static_cast<uint32_t>(dynamic_indices.size()),
+    vkCmdDrawIndexed(command_buffer_context.command_buffer[current_frame],
+                     static_cast<uint32_t>(vertex_info.dynamic_indices.size()),
                      1, 0, 0, 0);
     vkCmdEndRenderPass(command_buffer_context.command_buffer[current_frame]);
 
@@ -1756,55 +1792,20 @@ void cleanup(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
 
 
 
-// Modified create_quad function to properly position quads
-std::vector<Vertex> create_quad(glm::vec2 pos, glm::vec3 color)
-{
-    float size = 0.1f; // Make quads smaller so we can see multiple
-    return {
-            {{pos.x - size, pos.y - size}, {color}},
-            {{pos.x + size, pos.y - size}, {color}},
-            {{pos.x + size, pos.y + size}, {color}},
-            {{pos.x - size, pos.y + size}, {color}}
-    };
-}
 
-void add_quad(glm::vec2 pos, glm::vec3 color)
-{
-    std::vector<Vertex> new_quad = create_quad(pos, color);
-    uint16_t base_index = static_cast<uint16_t>(dynamic_vertices.size());
-
-    // Add vertices
-    dynamic_vertices.insert(dynamic_vertices.end(), new_quad.begin(), new_quad.end());
-
-    // Add indices (two triangles per quad)
-    std::vector<uint16_t> quad_indices = {
-        static_cast<uint16_t>(base_index + 0), static_cast<uint16_t>(base_index + 1), static_cast<uint16_t>(base_index + 2),
-        static_cast<uint16_t>(base_index + 2), static_cast<uint16_t>(base_index + 3), static_cast<uint16_t>(base_index + 0)
-    };
-
-    dynamic_indices.insert(dynamic_indices.end(), quad_indices.begin(), quad_indices.end());
-
-    vertex_buffer_needs_update = true;
-
-    /*
-    printf("Added quad at (%.2f, %.2f) with color (%.2f, %.2f, %.2f)\n",
-           pos.x, pos.y, color.r, color.g, color.b);
-    printf("Total vertices: %zu, Total indices: %zu\n", dynamic_vertices.size(), dynamic_indices.size());
-    */
-}
-
-void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
+void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, VERTEX_DYNAMIC_INFO& vertex_info)
 {
     //TODO: so while not happening rn, we can use an offset to only copy the new data, instead of the whole buffer over
     //so instead of copy buffer we can use copy_buffer_region, which ill have to double check how it works
-     if (!vertex_buffer_needs_update) return;
+    if (!vertex_info.vertex_buffer_should_update) return;
 
     // Only copy we are currently using vertices data
-    VkDeviceSize current_vertex_data_size = sizeof(vertices[0]) * dynamic_vertices.size();
+    VkDeviceSize current_vertex_data_size = sizeof(vertices[0]) * vertex_info.dynamic_vertices.size();
 
     //map and copy data
-    vkMapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, 0, vertex_buffer_capacity, 0, &data_vertex);
-    memcpy(data_vertex, dynamic_vertices.data(), current_vertex_data_size);
+    vkMapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, 0, vertex_buffer_capacity, 0,
+                &data_vertex);
+    memcpy(data_vertex, vertex_info.dynamic_vertices.data(), current_vertex_data_size);
     vkUnmapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory);
 
     //transfer from storage buffer/cpu buffer to gpu buffer
@@ -1812,16 +1813,16 @@ void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_
                 vertex_buffer_capacity);
 
 
-    VkDeviceSize current_index_data_size = sizeof(indices[0]) * dynamic_indices.size();
+    VkDeviceSize current_index_data_size = sizeof(indices[0]) * vertex_info.dynamic_indices.size();
 
     vkMapMemory(vulkan_context.logical_device, index_staging_buffer_memory, 0, index_buffer_capacity, 0, &data_index);
-    memcpy(data_index, dynamic_indices.data(), current_index_data_size);
+    memcpy(data_index, vertex_info.dynamic_indices.data(), current_index_data_size);
     vkUnmapMemory(vulkan_context.logical_device, index_staging_buffer_memory);
 
     copy_buffer(vulkan_context, command_buffer_context, index_staging_buffer, command_buffer_context.index_buffer,
                 index_buffer_capacity);
 
-    vertex_buffer_needs_update = false;
+    vertex_info.vertex_buffer_should_update = false;
 
 }
 
@@ -1870,19 +1871,19 @@ void copy_buffer_region(Vulkan_Context& vulkan_context, Command_Buffer_Context& 
     vkFreeCommandBuffers(vulkan_context.logical_device, command_buffer_context.command_pool, 1, &temp_command_buffer);
 }
 
-void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
+void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, VERTEX_DYNAMIC_INFO& vertex_info)
 {
     //so from what i understand, if i want to add something at runtime, it needs to go from cpu to gpu
     //therefore i need to keep a persistent storage buffer
 
-    if (!vertex_buffer_needs_update) return;
+    if (!vertex_info.vertex_buffer_should_update) return;
 
     // Wait for device to be idle before updating buffers
     vkDeviceWaitIdle(vulkan_context.logical_device);
 
 
     // Create new vertex buffer
-    VkDeviceSize vertex_buffer_size = sizeof(dynamic_vertices[0]) * dynamic_vertices.size();
+    VkDeviceSize vertex_buffer_size = sizeof(vertex_info.dynamic_vertices[0]) * vertex_info.dynamic_vertices.size();
 
     VkBuffer vertex_staging_buffer;
     VkDeviceMemory vertex_staging_buffer_memory;
@@ -1893,7 +1894,7 @@ void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffe
 
     void* vertex_data;
     vkMapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, 0, vertex_buffer_size, 0, &vertex_data);
-    memcpy(vertex_data, dynamic_vertices.data(), (size_t)vertex_buffer_size);
+    memcpy(vertex_data, vertex_info.dynamic_vertices.data(), (size_t) vertex_buffer_size);
     vkUnmapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory);
 
     create_buffer(vulkan_context, vertex_buffer_size,
@@ -1908,7 +1909,7 @@ void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffe
     vkFreeMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, nullptr);
 
     // Create new index buffer
-    VkDeviceSize index_buffer_size = sizeof(dynamic_indices[0]) * dynamic_indices.size();
+    VkDeviceSize index_buffer_size = sizeof(vertex_info.dynamic_indices[0]) * vertex_info.dynamic_indices.size();
 
     VkBuffer index_staging_buffer;
     VkDeviceMemory index_staging_buffer_memory;
@@ -1919,7 +1920,7 @@ void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffe
 
     void* index_data;
     vkMapMemory(vulkan_context.logical_device, index_staging_buffer_memory, 0, index_buffer_size, 0, &index_data);
-    memcpy(index_data, dynamic_indices.data(), (size_t)index_buffer_size);
+    memcpy(index_data, vertex_info.dynamic_indices.data(), (size_t) index_buffer_size);
     vkUnmapMemory(vulkan_context.logical_device, index_staging_buffer_memory);
 
     create_buffer(vulkan_context, index_buffer_size,
@@ -1933,7 +1934,7 @@ void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffe
     vkDestroyBuffer(vulkan_context.logical_device, index_staging_buffer, nullptr);
     vkFreeMemory(vulkan_context.logical_device, index_staging_buffer_memory, nullptr);
 
-    vertex_buffer_needs_update = false;
+    vertex_info.vertex_buffer_should_update = false;
 
     printf("Updated vertex and index buffers\n");
 }
@@ -1941,7 +1942,7 @@ void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffe
 void create_index_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
 {
     // Create buffer large enough for maximum indices, not just initial indices
-    index_buffer_capacity = sizeof(uint16_t) * MAX_INDICES;  // Use MAX_INDICES instead of indices.size()
+    index_buffer_capacity = sizeof(uint16_t) * MAX_INDICES; // Use MAX_INDICES instead of indices.size()
 
     // Create staging buffer
     create_buffer(vulkan_context, index_buffer_capacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -1961,7 +1962,8 @@ void create_index_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Cont
     vkUnmapMemory(vulkan_context.logical_device, index_staging_buffer_memory);
 
     // Create device local buffer with full size
-    create_buffer(vulkan_context, index_buffer_capacity, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+    create_buffer(vulkan_context, index_buffer_capacity,
+                  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, command_buffer_context.index_buffer,
                   command_buffer_context.index_buffer_memory);
 
@@ -1970,15 +1972,15 @@ void create_index_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Cont
                 index_buffer_capacity);
 
 
-    std::cout << "CREATED INDEX BUFFER SUCCESS (Size: " << index_buffer_capacity << " bytes for " << MAX_INDICES << " indices)\n";
+    std::cout << "CREATED INDEX BUFFER SUCCESS (Size: " << index_buffer_capacity << " bytes for " << MAX_INDICES <<
+            " indices)\n";
 }
 
 
 void create_vertex_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
 {
-
     // Create buffer large enough for maximum vertices, not just initial vertices
-    vertex_buffer_capacity = sizeof(Vertex) * MAX_VERTICES;  // Use MAX_VERTICES instead of vertices.size()
+    vertex_buffer_capacity = sizeof(Vertex) * MAX_VERTICES; // Use MAX_VERTICES instead of vertices.size()
 
 
     create_buffer(vulkan_context, vertex_buffer_capacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -1988,7 +1990,8 @@ void create_vertex_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Con
     // Only copy initial vertices data, but allocate full buffer
     VkDeviceSize initial_data_size = sizeof(vertices[0]) * vertices.size();
 
-    vkMapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, 0, vertex_buffer_capacity, 0, &data_vertex);
+    vkMapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, 0, vertex_buffer_capacity, 0,
+                &data_vertex);
 
     // Zero out the entire buffer first
     memset(data_vertex, 0, vertex_buffer_capacity);
@@ -2007,6 +2010,6 @@ void create_vertex_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Con
                 vertex_buffer_capacity);
 
 
-    std::cout << "CREATED VERTEX BUFFER SUCCESS (Size: " << vertex_buffer_capacity << " bytes for " << MAX_VERTICES << " vertices)\n";
-
+    std::cout << "CREATED VERTEX BUFFER SUCCESS (Size: " << vertex_buffer_capacity << " bytes for " << MAX_VERTICES <<
+            " vertices)\n";
 }
