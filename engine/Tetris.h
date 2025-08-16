@@ -125,19 +125,19 @@ inline std::vector<Grid_Position> L_Block(int position)
 {
     if (position == 0)
     {
-        return {Grid_Position(0, 2), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2)};
+        return {Grid_Position(0, 0), Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(2, 1)};
     }
     if (position == 1)
     {
-        return {Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(2, 1), Grid_Position(2, 2)};
+        return {Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 0)};
     }
     if (position == 2)
     {
-        return {Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 0)};
+        return {Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(2, 1), Grid_Position(2, 2)};
     }
     if (position == 3)
     {
-        return {Grid_Position(0, 0), Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(2, 1)};
+        return {Grid_Position(0, 2), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2)};
     };
 }
 
@@ -145,19 +145,19 @@ inline std::vector<Grid_Position> J_Block(int position)
 {
     if (position == 0)
     {
-        return {Grid_Position(0, 0), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2)};
+        return {Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(2, 0), Grid_Position(2, 1)};
     }
     if (position == 1)
     {
-        return {Grid_Position(0, 1), Grid_Position(0, 2), Grid_Position(1, 1), Grid_Position(2, 1)};
+        return {Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 2)};
     }
     if (position == 2)
     {
-        return {Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 2)};
+        return {Grid_Position(0, 1), Grid_Position(0, 2), Grid_Position(1, 1), Grid_Position(2, 1)};
     }
     if (position == 3)
     {
-        return {Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(2, 0), Grid_Position(2, 1)};
+        return {Grid_Position(0, 0), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2)};
     };
 
 }
@@ -170,58 +170,59 @@ inline std::vector<Grid_Position> S_Block(int position)
 {
     if (position == 0)
     {
-        return {Grid_Position(0, 1), Grid_Position(0, 2), Grid_Position(1, 0), Grid_Position(1, 1)};
+        return {Grid_Position(0, 0), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(2, 1)};
     }
     if (position == 1)
     {
-        return {Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 2)};
-    }
-    if (position == 2)
-    {
         return {Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 0), Grid_Position(2, 1)};
-    }
+    } if (position == 2)
+    {
+        return {Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 2)};
+    };
     if (position == 3)
     {
-        return {Grid_Position(0, 0), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(2, 1)};
-    };
-
+        return {Grid_Position(0, 1), Grid_Position(0, 2), Grid_Position(1, 0), Grid_Position(1, 1)};
+    }
 }
+
+
+
 inline std::vector<Grid_Position> T_Block(int position)
 {
     if (position == 0)
     {
-        return {Grid_Position(0, 1), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2)};
+        return {Grid_Position(0, 1), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(2, 1)};
     }
     if (position == 1)
     {
-        return{Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 1)};
+        return {Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 1)};
     }
     if (position == 2)
     {
-        return {Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 1)};
+        return{Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 1)};
     }
     if (position == 3)
     {
-        return {Grid_Position(0, 1), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(2, 1)};
+        return {Grid_Position(0, 1), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2)};
     };
 }
 inline std::vector<Grid_Position> Z_Block(int position)
 {
     if (position == 0)
     {
-        return {Grid_Position(0, 0), Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(1, 2)};
+        return{Grid_Position(0, 2), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 1)};
     }
     if (position == 1)
     {
-        return{Grid_Position(0, 2), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(2, 1)};
+        return {Grid_Position(0, 0), Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(1, 2)};
     }
     if (position == 2)
     {
-        return{Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(2, 1), Grid_Position(2, 2)};
+        return{Grid_Position(0, 1), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(2, 0)};
     }
     if (position == 3)
     {
-        return{Grid_Position(0, 1), Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(2, 0)};
+        return{Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(2, 1), Grid_Position(2, 2)};
     };
 
     return {Grid_Position(0, 0)};
@@ -231,19 +232,19 @@ inline std::vector<Grid_Position> I_Block(int position)
 {
     if (position == 0)
     {
-        return {Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(1, 3)}  ;
+        return{Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(2, 1), Grid_Position(3, 1)};
     }
     if (position == 1)
     {
-        return{Grid_Position(0, 2), Grid_Position(1, 2), Grid_Position(2, 2), Grid_Position(3, 2)};
+        return{Grid_Position(2, 0), Grid_Position(2, 1), Grid_Position(2, 2), Grid_Position(2, 3)};
     }
     if (position == 2)
     {
-        return{Grid_Position(2, 0), Grid_Position(2, 1), Grid_Position(2, 2), Grid_Position(2, 3)};
+        return{Grid_Position(0, 2), Grid_Position(1, 2), Grid_Position(2, 2), Grid_Position(3, 2)};
     }
     if (position == 3)
     {
-        return{Grid_Position(0, 1), Grid_Position(1, 1), Grid_Position(2, 1), Grid_Position(3, 1)};
+        return {Grid_Position(1, 0), Grid_Position(1, 1), Grid_Position(1, 2), Grid_Position(1, 3)}  ;
     };
 
     return {Grid_Position(0, 0)};
