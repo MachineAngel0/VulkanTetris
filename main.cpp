@@ -47,8 +47,6 @@ int main()
         //printf("%fMS\n", dt);
         //printf("%fFPS\n", delta_time_to_fps(dt));
 
-
-
         glfwPollEvents();
         key_callback(window_info.window, game_state, vertex_info);
 

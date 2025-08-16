@@ -93,7 +93,6 @@ inline Tetris_Grid create_grid(VERTEX_DYNAMIC_INFO& vertex_info, int column, int
             }
 
             add_quad(glm::vec2{x, y}, glm::vec3{color},  BLOCK_SCALE, vertex_info);
-            printf("X: %f, Y:%f\n", x, y);
         }
     }
 
@@ -273,6 +272,34 @@ inline std::vector<Grid_Position> Z_Block(int position)
 }
 
 
+inline void tetromino_update(Tetromino& tetromino, VERTEX_DYNAMIC_INFO& vertex_info)
+{
+
+    for (int i = 0; i < tetromino.id.size(); i++)
+    {
+
+        Grid_Position position = tetromino.grid_position[i];
+
+        int id = tetromino.id[i] * 4;
+        vertex_info.dynamic_vertices[id].pos.x =  XOFFSET + (position.x * CELL_SIZE) - BLOCK_SCALE;
+        vertex_info.dynamic_vertices[id].pos.y = YOFFSET + (position.y * CELL_SIZE) - BLOCK_SCALE;
+
+        vertex_info.dynamic_vertices[id+1].pos.x =  XOFFSET + (position.x * CELL_SIZE) + BLOCK_SCALE;
+        vertex_info.dynamic_vertices[id+1].pos.y = YOFFSET + (position.y * CELL_SIZE) - BLOCK_SCALE;
+
+        vertex_info.dynamic_vertices[id+2].pos.x =  XOFFSET + (position.x * CELL_SIZE) + BLOCK_SCALE;
+        vertex_info.dynamic_vertices[id+2].pos.y = YOFFSET + (position.y * CELL_SIZE) + BLOCK_SCALE;
+
+        vertex_info.dynamic_vertices[id+3].pos.x =  XOFFSET + (position.x * CELL_SIZE) - BLOCK_SCALE;
+        vertex_info.dynamic_vertices[id+3].pos.y = YOFFSET + (position.y * CELL_SIZE) + BLOCK_SCALE;
+
+    }
+
+    vertex_info.vertex_buffer_should_update = true;
+
+}
+
+
 inline void rotate_block(Tetromino& tetromino, VERTEX_DYNAMIC_INFO& vertex_info)
 {
     //testing using Z
@@ -318,13 +345,44 @@ inline void move_block(Tetromino& tetromino, Direction direction, VERTEX_DYNAMIC
             rotate_block(tetromino, vertex_info);
             break;
         case DOWN:
+            tetromino_update(tetromino, vertex_info);
+
+            /*
+            for (int i = 0; i < tetromino.id.size(); i++)
+            {
+
+                Grid_Position position = tetromino.grid_position[i];
+
+                int id = tetromino.id[i] * 4;
+                vertex_info.dynamic_vertices[id].pos.x =  XOFFSET + (position.x * CELL_SIZE) - BLOCK_SCALE;
+                vertex_info.dynamic_vertices[id].pos.y = YOFFSET + (position.y * CELL_SIZE) - BLOCK_SCALE;
+
+                vertex_info.dynamic_vertices[id+1].pos.x =  XOFFSET + (position.x * CELL_SIZE) + BLOCK_SCALE;
+                vertex_info.dynamic_vertices[id+1].pos.y = YOFFSET + (position.y * CELL_SIZE) - BLOCK_SCALE;
+
+                vertex_info.dynamic_vertices[id+2].pos.x =  XOFFSET + (position.x * CELL_SIZE) + BLOCK_SCALE;
+                vertex_info.dynamic_vertices[id+2].pos.y = YOFFSET + (position.y * CELL_SIZE) + BLOCK_SCALE;
+
+                vertex_info.dynamic_vertices[id+3].pos.x =  XOFFSET + (position.x * CELL_SIZE) - BLOCK_SCALE;
+                vertex_info.dynamic_vertices[id+3].pos.y = YOFFSET + (position.y * CELL_SIZE) + BLOCK_SCALE;
+
+            }*/
+
+            for (auto& grid_position : tetromino.grid_position)
+            {
+                grid_position.x++;
+                grid_position.y++;
+            }
+
+
+            /*
             for (int id : tetromino.id)
             {
-                for (int i = id*4; i < (id*4)+4; i++)
-                {
-                    vertex_info.dynamic_vertices[i].pos.y += CELL_SIZE;
-                }
+                move_quad(id, vertex_info, {0.0f, CELL_SIZE});
             }
+
+            }*/
+
             break;
         case RIGHT:
             for (int id : tetromino.id)
