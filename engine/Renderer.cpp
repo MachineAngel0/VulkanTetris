@@ -148,7 +148,7 @@ void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INF
     {
         if (!w_key_pressed)
         {
-            move_block(game_state->current_tetromino, UP, vertex_info);
+            move_block(game_state->tetris_grid, game_state->current_tetromino, UP, vertex_info);
 
             w_key_pressed = true;
         }
@@ -161,7 +161,7 @@ void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INF
     {
         if (!a_key_pressed)
         {
-            move_block(game_state->current_tetromino, LEFT, vertex_info);
+            move_block(game_state->tetris_grid, game_state->current_tetromino, LEFT, vertex_info);
 
             a_key_pressed = true;
         }
@@ -174,7 +174,7 @@ void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INF
     {
         if (!s_key_pressed)
         {
-            move_block(game_state->current_tetromino, DOWN, vertex_info);
+            move_block(game_state->tetris_grid, game_state->current_tetromino, DOWN, vertex_info);
 
             //move_cube(vertex_info, game_state.current_block.id, glm::vec2{0,0.1});
             s_key_pressed = true;
@@ -188,7 +188,7 @@ void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INF
     {
         if (!d_key_pressed)
         {
-            move_block(game_state->current_tetromino, RIGHT, vertex_info);
+            move_block(game_state->tetris_grid, game_state->current_tetromino, RIGHT, vertex_info);
 
             d_key_pressed = true;
         }
