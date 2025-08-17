@@ -56,6 +56,8 @@ struct VERTEX_DYNAMIC_INFO
 
     bool vertex_buffer_should_update = false;
 
+    int mesh_id = 0;
+
 };
 
 

@@ -36,7 +36,7 @@ int add_quad(glm::vec2 pos, glm::vec3 color, float scale, VERTEX_DYNAMIC_INFO& v
 
     vertex_info.vertex_buffer_should_update = true;
 
-    return mesh_id++;
+    return vertex_info.mesh_id++;
 
     /*
     printf("Added quad at (%.2f, %.2f) with color (%.2f, %.2f, %.2f)\n",

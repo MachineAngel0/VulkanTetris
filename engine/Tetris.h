@@ -2,6 +2,7 @@
 #ifndef TETRIS_H
 #define TETRIS_H
 #include <cstdio>
+#include <unordered_map>
 #include <vector>
 #include <bits/fs_fwd.h>
 #include <glm/glm.hpp>
@@ -12,6 +13,19 @@
 
 //I need to be able to render multiple squares
 //and put them at specific spots on the screen
+
+
+
+
+constexpr int GRID_ROW = 12; //2 rows are the boundaries
+constexpr int GRID_COLUMN = 22; //1 columns are the boundaries
+constexpr float BLOCK_SCALE = 0.041f;
+constexpr float CELL_SIZE = 0.085f;
+constexpr float XOFFSET = -0.4f;
+constexpr float YOFFSET = -0.85f;
+
+constexpr float SPAWN_CENTER_OFFSET = 5;
+
 
 enum Direction
 {
@@ -34,16 +48,6 @@ struct Grid_Position
     int y;
 };
 
-struct Tetris_Grid
-{
-    int column;
-    int row;
-
-    std::vector<Grid_Position> grid;
-    //std::vector<int> occupied_positions;
-
-};
-
 enum Tetromino_Type
 {
     I,
@@ -56,31 +60,75 @@ enum Tetromino_Type
     COUNT,
 };
 
+enum COLOR: int8_t
+{
+    WHITE,
+    BLUE_LIGHT,
+    YELLOW,
+    PURPLE,
+    GREEN,
+    RED,
+    ORANGE,
+    BLUE_DARK,
+    GREY,
+};
 
 
-constexpr int GRID_ROW = 12; //2 rows are the boundaries
-constexpr int GRID_COLUMN = 22; //1 columns are the boundaries
-constexpr float BLOCK_SCALE = 0.041f;
-constexpr float CELL_SIZE = 0.085f;
-constexpr float XOFFSET = -0.4f;
-constexpr float YOFFSET = -0.85f;
+struct Tetris_Grid
+{
+    int column;
+    int row;
+    //tetromino type represent the color of the grid
+    COLOR grid_color [GRID_ROW][GRID_COLUMN];
+};
 
-constexpr float SPAWN_CENTER_OFFSET = 5;
 
+static std::unordered_map<COLOR, glm::vec3> color_look_up_table{
+    {WHITE,glm::vec3{1.0, 1.0, 1.0}},
+    {BLUE_LIGHT,glm::vec3{0.0, 1.0, 1.0}},
+    {YELLOW, glm::vec3{1.0,1.0,0.0}},
+    {PURPLE, glm::vec3{0.5,0.0,1.0}},
+    {GREEN,glm::vec3{0.0,1.0,0.0}},
+    {RED, glm::vec3{1.0,0.0,0.0}},
+    {ORANGE,glm::vec3{1.0,0.5,0.0}},
+    {BLUE_DARK,glm::vec3{0.0,0.0,1.0}},
+    {GREY,glm::vec3{0.5, 0.5, 0.5}},
+};
+
+static std::unordered_map<Tetromino_Type, COLOR> TETROMINO_COLOR_LOOKUP{
+    {I, BLUE_LIGHT},
+    {O, YELLOW},
+    {T, PURPLE},
+    {S, GREEN},
+    {Z, RED},
+    {J, ORANGE},
+    {L, BLUE_DARK},
+};
+
+inline glm::vec3 get_color(COLOR color)
+{
+    return color_look_up_table[color];
+}
+
+inline void debug_print_grid(const Tetris_Grid& tetris_grid)
+{
+    for (auto grid : tetris_grid.grid_color)
+    {
+        printf("%d\n", grid);
+    };
+
+}
 
 inline Tetris_Grid create_grid(VERTEX_DYNAMIC_INFO& vertex_info, int column, int row)
 {
     Tetris_Grid new_grid{};
     new_grid.column = column;
     new_grid.row = row;
-    new_grid.grid.reserve(GRID_ROW * GRID_COLUMN);
 
     for (int i = 0; i < GRID_ROW; i++)
     {
         for (int j = 0; j < GRID_COLUMN; j++)
         {
-            new_grid.grid.emplace_back(0);
-
 
             float x = XOFFSET + i * CELL_SIZE;  // Start from -0.45 for 10 columns
             float y = YOFFSET + j * CELL_SIZE;   // Start from -0.9 for 20 rows
@@ -92,14 +140,52 @@ inline Tetris_Grid create_grid(VERTEX_DYNAMIC_INFO& vertex_info, int column, int
             if (i == 0 || i == GRID_ROW-1|| j == 0 || j == GRID_COLUMN-1)
             {
                 color = grey;
+                new_grid.grid_color[i][j] = GREY; //give the edge a custom color
+            }
+            else
+            {
+                new_grid.grid_color[i][j] = WHITE;
             }
 
-            add_quad(glm::vec2{x, y}, glm::vec3{color},  BLOCK_SCALE, vertex_info);
+
+            add_quad(glm::vec2{x, y}, color_look_up_table[new_grid.grid_color[i][j]],  BLOCK_SCALE, vertex_info);
         }
     }
 
+    debug_print_grid(new_grid);
+
     return new_grid;
 }
+
+inline void refresh_grid(Tetris_Grid tetris_grid, VERTEX_DYNAMIC_INFO& vertex_info)
+{
+
+    vertex_info.dynamic_vertices.clear();
+    vertex_info.dynamic_indices.clear();
+    vertex_info.mesh_id = 0;
+    vertex_info.vertex_buffer_should_update = true;
+
+
+
+    for (int i = 0; i < GRID_ROW; i++)
+    {
+        for (int j = 0; j < GRID_COLUMN; j++)
+        {
+
+            float x = XOFFSET + i * CELL_SIZE;  // Start from -0.45 for 10 columns
+            float y = YOFFSET + j * CELL_SIZE;   // Start from -0.9 for 20 rows
+
+            //TODO: make get color function
+            //tetris_grid.grid_color[i][j];
+
+            add_quad(glm::vec2{x, y}, color_look_up_table[tetris_grid.grid_color[i][j]],  BLOCK_SCALE, vertex_info);
+        }
+    }
+
+}
+
+
+
 
 
 struct Tetromino
@@ -109,9 +195,9 @@ struct Tetromino
     std::vector<int> id;
     Tetromino_Type type;
     glm::vec3 color;
-    Grid_Position grid_position; // the offset from 0,0,
+    Grid_Position grid_position; // the offset from (0,0)
+    std::vector<Grid_Position> tetromino_default_position; // the position of each block relative to (0,0)
     int rotation_state = 0; //3 max
-    std::vector<Grid_Position> tetromino_default_position; // the position of each block relative to 0,0
 
 };
 
@@ -271,38 +357,32 @@ inline Tetromino create_new_tetromino(VERTEX_DYNAMIC_INFO& vertex_info, Tetromin
     switch (tetromino_type)
     {
         case I:
-            new_block.color = glm::vec3{0.0,1.0,1.0}; // LIGHTER BLUE
             new_block.tetromino_default_position = I_Block(0);
             break;
         case O:
-            new_block.color = glm::vec3{1.0,1.0,0.0}; //Yellow
             new_block.tetromino_default_position = O_Block();
             break;
         case T:
-            new_block.color = glm::vec3{0.5,0.0,1.0}; // PURPLE
             new_block.tetromino_default_position = T_Block(0);
             break;
         case S:
-            new_block.color = glm::vec3{0.0,1.0,0.0}; //GREEN
             new_block.tetromino_default_position = S_Block(0);
             break;
         case Z:
-            new_block.color = glm::vec3{1.0,0.0,0.0}; //RED
             new_block.tetromino_default_position = Z_Block(0);
             break;
         case J:
-            new_block.color = glm::vec3{1.0,0.5,0.0}; // ORANGE
             new_block.tetromino_default_position = J_Block(0);
             break;
         case L:
-            new_block.color = glm::vec3{0.0,0.0,1.0}; // DARKER BLUE
             new_block.tetromino_default_position = L_Block(0);
             break;
+        default: break;
     }
 
+    new_block.color =  color_look_up_table[TETROMINO_COLOR_LOOKUP[tetromino_type]];
     new_block.type = tetromino_type;
     spawn_block(new_block, new_block.color, vertex_info);
-
 
     return new_block;
 }
@@ -422,8 +502,8 @@ inline void rotate_block(Tetromino& tetromino, VERTEX_DYNAMIC_INFO& vertex_info)
 
 
 
-
-inline void move_block(Tetromino& tetromino, Direction direction, VERTEX_DYNAMIC_INFO& vertex_info)
+//return false means we want to spawn in a new block
+inline bool move_block(Tetromino& tetromino, Direction direction, VERTEX_DYNAMIC_INFO& vertex_info)
 {
 
     //we know that each cube is 4 vertices, and that the vertices are cube only
@@ -449,6 +529,14 @@ inline void move_block(Tetromino& tetromino, Direction direction, VERTEX_DYNAMIC
             {
                 tetromino.grid_position.y++;
             }
+            else
+            {
+                // if this is ever false, then we want to return false, to spawn in a new block
+                return false;
+            }
+
+
+
             tetromino_update(tetromino, vertex_info);
             break;
         case RIGHT:
@@ -491,8 +579,17 @@ inline void move_block(Tetromino& tetromino, Direction direction, VERTEX_DYNAMIC
     }
 
     vertex_info.vertex_buffer_should_update = true;
+    return true;
+}
+
+
+inline void update_grid_representation(Tetris_Grid& tetris_grid, Tetromino& current_tetromino, VERTEX_DYNAMIC_INFO& vertex_info)
+{
+    current_tetromino.grid_position.x = 0;
+
 
 }
+
 
 
 struct Tetris_Clock
@@ -510,7 +607,7 @@ inline void tetris_clock_update(Tetris_Clock& tetris_clock, float delta_time)
     tetris_clock.accumulated_time -= 1.0f * delta_time;
     //printf("%f\n", tetris_clock.accumulated_time);
 };
-inline bool should_move_block(Tetris_Clock& tetris_clock)
+inline bool should_move_block_time_trigger(Tetris_Clock& tetris_clock)
 {
     if (tetris_clock.accumulated_time <= 0)
     {
@@ -532,7 +629,7 @@ struct Game_State
 inline Tetromino pick_new_tetromino(VERTEX_DYNAMIC_INFO& vertex_info)
 {
     srand(static_cast<unsigned int>(time(0))); // Seed the random number generator
-    auto type = static_cast<Tetromino_Type>(rand() %  Tetromino_Type::COUNT); // get a random num
+    auto type = static_cast<Tetromino_Type>((rand() %  Tetromino_Type::COUNT)); // get a random num
     return create_new_tetromino(vertex_info, type);
 }
 
@@ -540,11 +637,30 @@ inline Tetromino pick_new_tetromino(VERTEX_DYNAMIC_INFO& vertex_info)
 inline void update_game(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_dynamic_info, float dt)
 {
     tetris_clock_update(game_state->tetris_clock, dt);
-    if (should_move_block(game_state->tetris_clock))
+    if (should_move_block_time_trigger(game_state->tetris_clock))
     {
-        printf("move_block\n");
-        move_block(game_state->current_tetromino, DOWN, vertex_dynamic_info);
 
+        printf("move_block\n");
+
+        bool spawn_new_block = move_block(game_state->current_tetromino, DOWN, vertex_dynamic_info);
+
+        COLOR Grid_Color = TETROMINO_COLOR_LOOKUP[game_state->current_tetromino.type];
+
+        if (!spawn_new_block)
+        {
+            //set the grid representation
+            for (auto tetromino_default_position : game_state->current_tetromino.tetromino_default_position)
+            {
+                game_state->tetris_grid.grid_color
+                [tetromino_default_position.x + game_state->current_tetromino.grid_position.x][tetromino_default_position.y + game_state->current_tetromino.grid_position.y]
+                = Grid_Color;
+            }
+
+            refresh_grid(game_state->tetris_grid, vertex_dynamic_info);
+
+            //set new tetromino
+            game_state->current_tetromino = pick_new_tetromino(vertex_dynamic_info);
+        }
     }
 };
 
