@@ -24,7 +24,7 @@ int main()
 
     game_state->tetris_grid = create_grid(vertex_info, GRID_COLUMN, GRID_ROW);
     //game_state->current_block = create_block(vertex_info, O);
-    game_state->current_tetromino = create_block(vertex_info, I);
+    game_state->current_tetromino = pick_new_tetromino(vertex_info);
 
     Tetris_Clock tetris_clock;
     game_state->tetris_clock = tetris_clock;
