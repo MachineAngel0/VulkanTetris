@@ -60,6 +60,14 @@ struct VERTEX_DYNAMIC_INFO
 
 };
 
+inline void clear_vertex_info(VERTEX_DYNAMIC_INFO& vertex_info)
+{
+    vertex_info.dynamic_vertices.clear();
+    vertex_info.dynamic_indices.clear();
+    vertex_info.mesh_id = 0;
+    vertex_info.vertex_buffer_should_update = true;
+}
+
 
 static VkVertexInputBindingDescription getBindingDescription()
 {
@@ -345,10 +353,11 @@ void create_sync_objects(Vulkan_Context& vulkan_context, Semaphore_Fences_Contex
 
 
 inline bool e_key_pressed = false;
-inline bool w_key_pressed = false;
-inline bool a_key_pressed = false;
-inline bool s_key_pressed = false;
-inline bool d_key_pressed = false;
+inline bool up_key_pressed = false;
+inline bool left_key_pressed = false;
+inline bool down_key_pressed = false;
+inline bool right_key_pressed = false;
+inline bool space_key_pressed = false;
 
 static VkBuffer vertex_staging_buffer;
 static VkDeviceMemory vertex_staging_buffer_memory;

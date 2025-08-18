@@ -24,6 +24,8 @@ add_executable(VulkanTetris main.cpp
         engine/Mesh.h
         engine/clock.cpp
         engine/clock.h
+        engine/UI.cpp
+        engine/UI.h
 )
 
 

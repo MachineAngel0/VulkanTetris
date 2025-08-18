@@ -144,58 +144,75 @@ void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INF
     }
 
     //input keys
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
-        if (!w_key_pressed)
+        if (!up_key_pressed)
         {
             move_block(game_state->tetris_grid, game_state->current_tetromino, UP, vertex_info);
 
-            w_key_pressed = true;
+            up_key_pressed = true;
         }
     }
     else
     {
-        w_key_pressed = false;
+        up_key_pressed = false;
     }
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
     {
-        if (!a_key_pressed)
+        if (!left_key_pressed)
         {
             move_block(game_state->tetris_grid, game_state->current_tetromino, LEFT, vertex_info);
 
-            a_key_pressed = true;
+            left_key_pressed = true;
         }
     }
     else
     {
-        a_key_pressed = false;
+        left_key_pressed = false;
     }
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
-        if (!s_key_pressed)
+        if (!down_key_pressed)
         {
             move_block(game_state->tetris_grid, game_state->current_tetromino, DOWN, vertex_info);
 
             //move_cube(vertex_info, game_state.current_block.id, glm::vec2{0,0.1});
-            s_key_pressed = true;
+            down_key_pressed = true;
         }
     }
     else
     {
-        s_key_pressed = false;
+        down_key_pressed = false;
     }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
     {
-        if (!d_key_pressed)
+        if (!right_key_pressed)
         {
             move_block(game_state->tetris_grid, game_state->current_tetromino, RIGHT, vertex_info);
 
-            d_key_pressed = true;
+            right_key_pressed = true;
         }
     }
     else
     {
-        d_key_pressed = false;
+        right_key_pressed = false;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+    {
+        if (!space_key_pressed)
+        {
+            while (move_block(game_state->tetris_grid, game_state->current_tetromino, DOWN, vertex_info))
+            {
+                //we want to keep moving the piece down until we can no longer do so
+            }
+            game_state->tetris_clock.accumulated_time = 0;
+            space_key_pressed = true;
+        }
+    }
+    else
+    {
+        space_key_pressed = false;
     }
 }
 
@@ -1762,7 +1779,13 @@ void cleanup(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
     vkDestroyBuffer(vulkan_context.logical_device, command_buffer_context.vertex_buffer, nullptr);
     vkFreeMemory(vulkan_context.logical_device, command_buffer_context.vertex_buffer_memory, nullptr);
 
-    vkDestroyBuffer(vulkan_context.logical_device, command_buffer_context.vertex_buffer, nullptr);
+    vkDestroyBuffer(vulkan_context.logical_device, index_staging_buffer, nullptr);
+    vkFreeMemory(vulkan_context.logical_device, index_staging_buffer_memory, nullptr);
+
+    vkDestroyBuffer(vulkan_context.logical_device, vertex_staging_buffer, nullptr);
+    vkFreeMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, nullptr);
+
+
 
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)

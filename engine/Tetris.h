@@ -2,8 +2,9 @@
 #ifndef TETRIS_H
 #define TETRIS_H
 #include <cstdio>
+#include <random>
+#include <chrono>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 #include <bits/fs_fwd.h>
 #include <glm/glm.hpp>
@@ -25,7 +26,8 @@ constexpr float CELL_SIZE = 0.085f;
 constexpr float XOFFSET = -0.4f;
 constexpr float YOFFSET = -0.85f;
 
-constexpr float SPAWN_CENTER_OFFSET = 5;
+constexpr float SPAWN_XOFFSET = 5;
+constexpr float SPAWN_YOFFSET = -2;
 
 
 enum Direction
@@ -126,14 +128,7 @@ struct Tetromino
 
 
 
-inline void debug_print_grid(const Tetris_Grid& tetris_grid)
-{
-    for (auto grid : tetris_grid.grid_color)
-    {
-        printf("%d\n", grid);
-    };
 
-}
 
 inline Tetris_Grid create_grid(VERTEX_DYNAMIC_INFO& vertex_info, int column, int row)
 {
@@ -168,18 +163,13 @@ inline Tetris_Grid create_grid(VERTEX_DYNAMIC_INFO& vertex_info, int column, int
         }
     }
 
-    debug_print_grid(new_grid);
-
     return new_grid;
 }
 
 inline void refresh_grid(Tetris_Grid& tetris_grid, Tetromino current_tetromino, VERTEX_DYNAMIC_INFO& vertex_info)
 {
     //reset our vertex buffer data
-    vertex_info.dynamic_vertices.clear();
-    vertex_info.dynamic_indices.clear();
-    vertex_info.mesh_id = 0;
-    vertex_info.vertex_buffer_should_update = true;
+    clear_vertex_info(vertex_info);
 
     COLOR Grid_Color = TETROMINO_COLOR_LOOKUP[current_tetromino.type];
 
@@ -191,17 +181,15 @@ inline void refresh_grid(Tetris_Grid& tetris_grid, Tetromino current_tetromino, 
         = Grid_Color;
     }
 
-
-
-
-    std::unordered_set<int> row_to_clear;
-
-    for (int i = 0; i < GRID_ROW; i++)
+    int complete = 0; // the number of rows we want to shift the blocks down, everytime we have a completed row
+    //iterate the rows from the bottom up
+    for (int i = GRID_ROW; i > 0; i--)
     {
         bool clear_row = true;
+        if (i == 0 || i == GRID_ROW-1) continue;
         for (int j = 0; j < GRID_COLUMN; j++)
         {
-            if (i == 0 || i == GRID_ROW-1|| j == 0 || j == GRID_COLUMN-1) continue;
+            if (j == 0 || j == GRID_COLUMN-1) continue;
             if (tetris_grid.grid_color[i][j] == GREY) continue;
 
             if (tetris_grid.grid_color[i][j] == WHITE)
@@ -210,11 +198,42 @@ inline void refresh_grid(Tetris_Grid& tetris_grid, Tetromino current_tetromino, 
             }
         }
 
+        //if we clear the row we do that, otherwise, we want to move the blocks down based on the completed count
         if (clear_row)
         {
-            row_to_clear.emplace(i);
+            complete += 1;
+            //we want to clear the row
+            for (int j = 0; j < GRID_COLUMN; j++)
+            {
+                if (i == 0 || i == GRID_ROW-1|| j == 0 || j == GRID_COLUMN-1) continue;
+                if (tetris_grid.grid_color[i][j] == GREY) continue;
+
+                tetris_grid.grid_color[i][j] = WHITE;
+
+            }
+        }
+        else
+        {
+            //get the row below it and set its color to the current color
+            for (int j = 0; j < GRID_COLUMN; j++)
+            {
+                if (i == 0 || i == GRID_ROW-1|| j == 0 || j == GRID_COLUMN-1) continue;
+                if (tetris_grid.grid_color[i][j] == GREY) continue;
+
+                tetris_grid.grid_color[i+complete][j] = tetris_grid.grid_color[i][j];
+            }
         }
     }
+
+
+    /*
+    if (row_to_clear.contains(i))
+    {
+        if (tetris_grid.grid_color[i][j] != GREY)
+        {
+            tetris_grid.grid_color[i][j] = WHITE;
+        }
+    }*/
 
     for (int i = 0; i < GRID_ROW; i++)
     {
@@ -224,27 +243,12 @@ inline void refresh_grid(Tetris_Grid& tetris_grid, Tetromino current_tetromino, 
             float x = XOFFSET + j * CELL_SIZE;  // Start from -0.45 for 10 columns
             float y = YOFFSET + i * CELL_SIZE;   // Start from -0.9 for 20 rows
 
-            if (row_to_clear.contains(i))
-            {
-                if (tetris_grid.grid_color[i][j] != GREY)
-                {
-                    tetris_grid.grid_color[i][j] = WHITE;
-                }
-            }
-
             add_quad(glm::vec2{x, y}, color_look_up_table[tetris_grid.grid_color[i][j]],  BLOCK_SCALE, vertex_info);
         }
     }
 
 
 }
-
-
-
-
-
-
-
 
 inline std::vector<Grid_Position> L_Block(int position)
 {
@@ -317,7 +321,6 @@ inline std::vector<Grid_Position> S_Block(int position)
 }
 
 
-
 inline std::vector<Grid_Position> T_Block(int position)
 {
     if (position == 0)
@@ -386,7 +389,8 @@ inline std::vector<Grid_Position> I_Block(int position)
 
 inline void spawn_block(Tetromino& Tetromino, glm::vec3 color, VERTEX_DYNAMIC_INFO& vertex_info)
 {
-    Tetromino.grid_position.x += SPAWN_CENTER_OFFSET; // give it a 5 offset
+    Tetromino.grid_position.x += SPAWN_XOFFSET; // give it a 5 offset
+    Tetromino.grid_position.y += SPAWN_YOFFSET; // give it a 5 offset
     for (auto default_position : Tetromino.tetromino_default_position)
     {
         //Tetromino.id.emplace_back(add_quad(glm::vec2{XOFFSET + (SPAWN_CENTER_OFFSET + (CELL_SIZE*grid_position.x)), YOFFSET + (CELL_SIZE*grid_position.y)}, color, BLOCK_SCALE, vertex_info));
@@ -490,22 +494,27 @@ inline bool can_move(Tetris_Grid& tetris_grid, Tetromino& tetromino, glm::vec2 d
         //check x direction
         if (x_check > GRID_COLUMN - 2)
         {
+            //printf("NO X RIGHT\n");
             return false;
         }
         if (x_check < 1)
         {
+            //printf("NO X LEFT\n");
             return false;
         }
 
         //check y direction
         if (y_check > GRID_ROW - 2)
         {
+            //printf("NO Y BOTTOM\n");
             return false;
         }
-
-        //check for a colored block
-        if (tetris_grid.grid_color[y_check][x_check] != WHITE && tetris_grid.grid_color[y_check][x_check] != GREY)
+        std::cout << y_check << '\n';
+        //check for a colored block and also if we are above the grids top row
+        if (tetris_grid.grid_color[y_check][x_check] != WHITE && tetris_grid.grid_color[y_check][x_check] != GREY && y_check > 0 )
         {
+            //printf("IS A COLORED BLOCK\n");
+
             return false;
         }
 
@@ -615,8 +624,6 @@ inline bool move_block(Tetris_Grid& tetris_grid, Tetromino& tetromino, Direction
 inline void update_grid_representation(Tetris_Grid& tetris_grid, Tetromino& current_tetromino, VERTEX_DYNAMIC_INFO& vertex_info)
 {
     current_tetromino.grid_position.x = 0;
-
-
 }
 
 
@@ -655,10 +662,22 @@ struct Game_State
     float move_trigger = 0.0;
 };
 
+
+inline std::mt19937& rng() {
+    static std::mt19937 gen(
+        static_cast<unsigned int>(
+            std::chrono::high_resolution_clock::now().time_since_epoch().count()
+        )
+    );
+    return gen;
+}
+
+
 inline Tetromino pick_new_tetromino(VERTEX_DYNAMIC_INFO& vertex_info)
 {
-    srand(static_cast<unsigned int>(time(0))); // Seed the random number generator
-    auto type = static_cast<Tetromino_Type>((rand() %  Tetromino_Type::COUNT)); // get a random num
+    //get a random tetromino type, rn its kinda bad as you'll end up getting a duplicates quite often
+    std::uniform_int_distribution<int> dist(0, Tetromino_Type::COUNT - 1);
+    auto type = static_cast<Tetromino_Type>(dist(rng()));
     return create_new_tetromino(vertex_info, type);
 }
 
@@ -669,16 +688,30 @@ inline void update_game(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_dyna
     if (should_move_block_time_trigger(game_state->tetris_clock))
     {
 
-        printf("move_block\n");
-
         bool spawn_new_block = move_block(game_state->tetris_grid, game_state->current_tetromino, DOWN, vertex_dynamic_info);
 
         if (!spawn_new_block)
         {
-            refresh_grid(game_state->tetris_grid, game_state->current_tetromino, vertex_dynamic_info);
+            //since a block got stopped
+            //check if we lost the game
+            //we lose if the current tetromino is on any part of the grey
+            if (game_state->current_tetromino.grid_position.y <= 0)
+            {
+                printf("you lost\n");
+                clear_vertex_info(vertex_dynamic_info);
+                game_state->tetris_grid = create_grid(vertex_dynamic_info, GRID_COLUMN, GRID_ROW);
+                //game_state->current_block = create_block(vertex_info, O);
+                game_state->current_tetromino = pick_new_tetromino(vertex_dynamic_info);
+                tetris_clock_init(game_state->tetris_clock);
+            }
+            else
+            {
+                //printf("%d%d\n", game_state->current_tetromino.grid_position.x, game_state->current_tetromino.grid_position.y);
+                refresh_grid(game_state->tetris_grid, game_state->current_tetromino, vertex_dynamic_info);
 
-            //set new tetromino
-            game_state->current_tetromino = pick_new_tetromino(vertex_dynamic_info);
+                //set new tetromino
+                game_state->current_tetromino = pick_new_tetromino(vertex_dynamic_info);
+            }
         }
     }
 };
