@@ -15,6 +15,7 @@
 #include <glm/glm.hpp>
 
 
+struct UI_DRAW_INFO;
 struct Game_State;
 struct VERTEX_DYNAMIC_INFO;
 
@@ -169,6 +170,9 @@ struct Swapchain_Context
     VkPresentModeKHR presentModes;
     std::vector<VkImage> swap_chain_images;
     std::vector<VkImageView> swap_chain_image_views;
+
+    std::vector<VkImage> ui_swap_chain_images;
+    std::vector<VkImageView> ui_swap_chain_image_views;
 };
 
 struct QueueFamilyIndices
@@ -191,8 +195,14 @@ struct Command_Buffer_Context
     VkBuffer vertex_buffer;
     VkDeviceMemory vertex_buffer_memory;
 
+    VkBuffer vertex_staging_buffer;
+    VkDeviceMemory vertex_staging_buffer_memory;
+
     VkBuffer index_buffer;
     VkDeviceMemory index_buffer_memory;
+
+    VkBuffer index_staging_buffer;
+    VkDeviceMemory index_staging_buffer_memory;
 
     VkCommandPool command_pool;
     std::vector<VkCommandBuffer> command_buffer;
@@ -213,18 +223,13 @@ struct Semaphore_Fences_Context
 void run();
 
 
-void main_loop(Vulkan_Context& vulkan_context,
-               GLFW_Window_Context& window_info,
-               Swapchain_Context& swapchain_context,
-               Graphics_Context& graphics_context,
-               Command_Buffer_Context& command_buffer_context,
-               Semaphore_Fences_Context& semaphore_fences_context, VERTEX_DYNAMIC_INFO& vertex_info, Game_State* game_state);
-
-
-/**/
 void init_vulkan(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
                  Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
                  Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context);
+
+void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
+    Command_Buffer_Context& command_buffer_context);
+
 
 //ensure we have validation layer support
 bool ensure_validation_layer_support();
@@ -233,10 +238,10 @@ std::vector<const char *> getRequiredExtensions();
 
 
 void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
-                Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
-                Command_Buffer_Context& command_buffer_context,
-                Semaphore_Fences_Context& semaphore_fences_info,
-                VERTEX_DYNAMIC_INFO& vertex_info);
+                Swapchain_Context& swapchain_context,
+                Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context,
+                Semaphore_Fences_Context& semaphore_fences_info, VERTEX_DYNAMIC_INFO& vertex_info,
+                Graphics_Context& ui_graphics_context, Command_Buffer_Context& ui_command_buffer_context, UI_DRAW_INFO& ui_draw_info);
 
 /*CLEANUP*/
 void cleanup(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
@@ -293,7 +298,7 @@ VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& presen
 
 /* SWAPCHAIN RECREATION */
 void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
-                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
+                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context, Graphics_Context& ui_graphics_context);
 
 void cleanup_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
                        Graphics_Context& graphics_context);
@@ -306,7 +311,7 @@ void create_image_views(Vulkan_Context& vulkan_context, Swapchain_Context& swapc
 void create_graphics_pipeline(VkDevice& device, Swapchain_Context& swapchain_context,
                               Graphics_Context& graphics_context);
 
-std::vector<char> read_file(const std::string& filename);
+std::vector<char> read_shader_file(const std::string& filename);
 
 VkShaderModule create_shader_module(VkDevice& logical_device, const std::vector<char>& code);
 
@@ -359,15 +364,15 @@ inline bool down_key_pressed = false;
 inline bool right_key_pressed = false;
 inline bool space_key_pressed = false;
 
-static VkBuffer vertex_staging_buffer;
-static VkDeviceMemory vertex_staging_buffer_memory;
 static void* data_vertex;
 static VkDeviceSize vertex_buffer_capacity = 0;
-
-static VkBuffer index_staging_buffer;
-static VkDeviceMemory index_staging_buffer_memory;
 static void* data_index;
 static VkDeviceSize index_buffer_capacity = 0;
+
+static void* ui_data_vertex;
+static VkDeviceSize ui_vertex_buffer_capacity = 0;
+static void* ui_data_index;
+static VkDeviceSize ui_index_buffer_capacity = 0;
 
 const uint32_t max_object_count = 10000000;
 const uint32_t vertices_per_object = 4;
@@ -389,5 +394,24 @@ void create_index_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Cont
 void copy_buffer_region(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context,
                         VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
                         VkDeviceSize srcOffset, VkDeviceSize dstOffset);
+
+struct UI_Push_Constants
+{
+    //TODO: values are temporary for now
+    glm::vec2 screenSize{800.0,600.0};
+};
+
+
+void create_ui_render_pass(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
+void create_ui_graphics_pipeline(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
+void create_ui_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+void create_ui_index_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+void create_ui_command_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+void ui_record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_Context& ui_command_buffer_context,
+                              Graphics_Context& graphics_context, UI_DRAW_INFO& ui_info, uint32_t image_index, uint32_t current_frame);
+void ui_update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, VERTEX_DYNAMIC_INFO& vertex_info);
+void create_ui_frame_buffers(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
+                          Graphics_Context& ui_graphics_context);
+
 
 #endif //VULKANFROMSPECS_H

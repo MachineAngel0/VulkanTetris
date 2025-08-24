@@ -11,6 +11,7 @@
 struct UI_DRAW_INFO
 {
     VERTEX_DYNAMIC_INFO vertex_info;
+    UI_Push_Constants push_constants;
 };
 enum UI_Type
 {
@@ -43,10 +44,41 @@ struct UI
     int active;
 };
 
-
-
-void ui_draw_rect(glm::vec2 pos)
+inline std::vector<Vertex> UI_create_quad(glm::vec2 pos, glm::vec2 size, glm::vec3 color)
 {
+    return {
+         {{pos.x, pos.y}, {color}},
+            {{pos.x, pos.y + size.y}, {color}},
+            {{pos.x + size.x, pos.y + size.y}, {color}},
+            {{pos.x + size.x, pos.y}, {color}}
+    };
+}
+
+inline int ui_draw_rect(glm::vec2 pos, glm::vec2 size, glm::vec3 color, UI_DRAW_INFO& ui_draw_info)
+{
+    std::vector<Vertex> new_quad = UI_create_quad(pos, size, color);
+    uint16_t base_index = static_cast<uint16_t>(ui_draw_info.vertex_info.dynamic_vertices.size());
+
+    // Add vertices
+    ui_draw_info.vertex_info.dynamic_vertices.insert(ui_draw_info.vertex_info.dynamic_vertices.end(), new_quad.begin(), new_quad.end());
+
+    // Add indices (two triangles per quad)
+    std::vector<uint16_t> quad_indices = {
+        static_cast<uint16_t>(base_index + 0),
+        static_cast<uint16_t>(base_index + 1),
+        static_cast<uint16_t>(base_index + 2),
+        static_cast<uint16_t>(base_index + 2),
+        static_cast<uint16_t>(base_index + 3),
+        static_cast<uint16_t>(base_index + 0)
+    };
+
+    ui_draw_info.vertex_info.dynamic_indices.insert(ui_draw_info.vertex_info.dynamic_indices.end(), quad_indices.begin(), quad_indices.end());
+
+
+    ui_draw_info.vertex_info.vertex_buffer_should_update = true;
+
+    return ui_draw_info.vertex_info.mesh_id++;
+
 };
 
 

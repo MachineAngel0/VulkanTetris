@@ -1,8 +1,10 @@
 ﻿#include <iostream>
+#include <queue>
 
 #include "clock.h"
 #include "Tetris.h"
 #include "Renderer.h"
+#include "UI.h"
 
 
 int main()
@@ -31,11 +33,17 @@ int main()
     tetris_clock_init(game_state->tetris_clock);
 
 
+    Graphics_Context ui_graphics_context{};
+    Command_Buffer_Context ui_command_buffer_context{};
+    UI_DRAW_INFO ui_draw_info{};
+    ui_draw_info.push_constants.screenSize = {glm::vec2(600.0f,600.0f)};
+    //ui_draw_rect(glm::vec2{100.0,100.0}, glm::vec3{0.0,1.0,0.0}, ui_draw_info);
+    ui_draw_rect(glm::vec2{0.0f,0.0f}, glm::vec2{300.0f, 300.0f}, glm::vec3{0.0,1.0,0.0}, ui_draw_info);
 
 
     init_vulkan(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
                     semaphore_fences_context);
-
+    init_UI_vulkan(vulkan_context, swapchain_context, ui_graphics_context, ui_command_buffer_context);
     clock_windows_init();
 
 
@@ -53,7 +61,7 @@ int main()
         update_game(game_state, vertex_info, dt);
 
         draw_frame(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-                   semaphore_fences_context, vertex_info);
+                   semaphore_fences_context, vertex_info, ui_graphics_context, ui_command_buffer_context, ui_draw_info);
     }
 
     vkDeviceWaitIdle(vulkan_context.logical_device);
@@ -64,7 +72,9 @@ int main()
     cleanup(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
                 semaphore_fences_context);
 
-    std::cout << "Hello, World!" << std::endl;
+    std::cout << "Bye, World!" << std::endl;
+
+
     return 0;
 }
 

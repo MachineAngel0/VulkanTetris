@@ -676,7 +676,7 @@ inline std::mt19937& rng() {
 inline Tetromino pick_new_tetromino(VERTEX_DYNAMIC_INFO& vertex_info)
 {
     //get a random tetromino type, rn its kinda bad as you'll end up getting a duplicates quite often
-    std::uniform_int_distribution<int> dist(0, Tetromino_Type::COUNT - 1);
+    std::uniform_int_distribution dist(0, Tetromino_Type::COUNT - 1);
     auto type = static_cast<Tetromino_Type>(dist(rng()));
     return create_new_tetromino(vertex_info, type);
 }
