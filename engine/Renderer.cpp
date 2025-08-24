@@ -235,8 +235,8 @@ void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain
     Command_Buffer_Context& command_buffer_context)
 {
     //renderpass_create(vulkan_context, swapchain_context, graphics_context, RENDER_PASS_CLEAR_NONE_FLAG | RENDER_PASS_CLEAR_COLOR_BUFFER_FLAG, false, false);
-    //renderpass_create(vulkan_context, swapchain_context, graphics_context, RENDER_PASS_CLEAR_NONE_FLAG | RENDER_PASS_CLEAR_COLOR_BUFFER_FLAG, true, false);
-    create_ui_render_pass(vulkan_context, swapchain_context, graphics_context);
+    renderpass_create(vulkan_context, swapchain_context, graphics_context, RENDER_PASS_CLEAR_NONE_FLAG , true, false);
+    //create_ui_render_pass(vulkan_context, swapchain_context, graphics_context);
     create_ui_graphics_pipeline(vulkan_context, swapchain_context, graphics_context);
     create_ui_frame_buffers(vulkan_context, swapchain_context, graphics_context);
     create_command_pool(vulkan_context, command_buffer_context);
@@ -291,19 +291,20 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
                   &semaphore_fences_info.in_flight_fence[semaphore_fences_info.currentFrame]);
 
     //update_vertex_buffer_recreate(vulkan_context, command_buffer_context);
-    //update_vertex_buffer_update(vulkan_context, command_buffer_context, vertex_info);
+    update_vertex_buffer_update(vulkan_context, command_buffer_context, vertex_info);
     ui_update_vertex_buffer_update(vulkan_context, ui_command_buffer_context, ui_draw_info.vertex_info); // TODO:
 
     /* Record a command buffer which draws the scene onto that image */
 
-    //vkResetCommandBuffer(command_buffer_context.command_buffer[semaphore_fences_info.currentFrame], 0);
+    vkResetCommandBuffer(command_buffer_context.command_buffer[semaphore_fences_info.currentFrame], 0);
     vkResetCommandBuffer(ui_command_buffer_context.command_buffer[semaphore_fences_info.currentFrame], 0); // TODO:
 
 
-    //record_command_buffer(swapchain_context, command_buffer_context, graphics_context, vertex_info, image_index,semaphore_fences_info.currentFrame);
+    //WORLD DRAW COMMAND
+    record_command_buffer(swapchain_context, command_buffer_context, graphics_context, vertex_info, image_index,semaphore_fences_info.currentFrame);
 
     //UI DRAW COMMAND
-    ui_record_command_buffer(swapchain_context, ui_command_buffer_context, ui_graphics_context, ui_draw_info, image_index, semaphore_fences_info.currentFrame); // TODO:
+    ui_record_command_buffer(swapchain_context, ui_command_buffer_context, ui_graphics_context, ui_draw_info, image_index, semaphore_fences_info.currentFrame);
 
 
 
@@ -322,9 +323,9 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
     //submitInfo.pCommandBuffers = &command_buffer_context.command_buffer[semaphore_fences_info.currentFrame];
-    submitInfo.pCommandBuffers = &ui_command_buffer_context.command_buffer[semaphore_fences_info.currentFrame];
-    //submitInfo.commandBufferCount = command_buffers.size(); // TODO:
-    //submitInfo.pCommandBuffers = command_buffers.data(); // TODO:
+    //submitInfo.pCommandBuffers = &ui_command_buffer_context.command_buffer[semaphore_fences_info.currentFrame];
+    submitInfo.commandBufferCount = command_buffers.size();
+    submitInfo.pCommandBuffers = command_buffers.data();
 
     VkSemaphore signalSemaphores[] = {
         semaphore_fences_info.render_finished_semaphore[semaphore_fences_info.currentFrame]
@@ -996,10 +997,13 @@ void cleanup_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapch
     {
         vkDestroyFramebuffer(vulkan_context.logical_device, framebuffer, nullptr);
     }
-
     for (auto imageView: swapchain_context.swap_chain_image_views)
     {
         vkDestroyImageView(vulkan_context.logical_device, imageView, nullptr);
+    }
+    for (auto ui_imageView: swapchain_context.ui_swap_chain_image_views)
+    {
+        vkDestroyImageView(vulkan_context.logical_device, ui_imageView, nullptr);
     }
 
     vkDestroySwapchainKHR(vulkan_context.logical_device, swapchain_context.swapchain, nullptr);

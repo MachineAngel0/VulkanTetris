@@ -31,7 +31,7 @@ inline void renderpass_create(Vulkan_Context& vulkan_context, Swapchain_Context&
 
     //VkPipelineLayout pipelineLayout; idk what this is here for
 
-    unsigned char do_clear_color = (clear_flags && Renderpass_Clear_Flag::RENDER_PASS_CLEAR_COLOR_BUFFER_FLAG) != 0;
+    unsigned char do_clear_color = (clear_flags & RENDER_PASS_CLEAR_COLOR_BUFFER_FLAG) != 0;
 
     //TODO: multisampling
     VkAttachmentDescription colorAttachment{};
