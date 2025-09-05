@@ -14,6 +14,8 @@
 
 #include <glm/glm.hpp>
 
+//#include "UI.h"
+
 
 struct UI_DRAW_INFO;
 struct Game_State;
@@ -22,6 +24,7 @@ struct VERTEX_DYNAMIC_INFO;
 
 //TODO: move out when done
 void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_info);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 
 struct Vertex
@@ -223,9 +226,12 @@ struct Semaphore_Fences_Context
 void run();
 
 
-void init_vulkan(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
-                 Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
-                 Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context);
+void init_vulkan(Vulkan_Context& vulkan_context,
+                 GLFW_Window_Context& window_info,
+                 Swapchain_Context& swapchain_context,
+                 Graphics_Context& graphics_context,
+                 Command_Buffer_Context& command_buffer_context,
+                 Semaphore_Fences_Context& semaphore_fences_context, UI_DRAW_INFO& draw_info);
 
 void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
     Command_Buffer_Context& command_buffer_context);
@@ -246,7 +252,8 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
 /*CLEANUP*/
 void cleanup(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
              Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
-             Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context);
+             Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context, Graphics_Context&
+             ui_graphics_context);
 
 /* GLFW WINDOW*/
 void init_window(GLFW_Window_Context& context);
@@ -290,7 +297,7 @@ bool queue_family_indices_is_complete(QueueFamilyIndices queue_family_indices);
 void create_logical_device(Vulkan_Context& vulkan_context);
 
 /* SWAPCHAIN */
-void create_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context);
+void create_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, UI_DRAW_INFO& ui_draw_info);
 
 VkSurfaceFormatKHR choose_swap_surface_format(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 
@@ -298,10 +305,10 @@ VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& presen
 
 /* SWAPCHAIN RECREATION */
 void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
-                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context, Graphics_Context& ui_graphics_context);
+                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context, Graphics_Context& ui_graphics_context, UI_DRAW_INFO& ui_draw_info);
 
 void cleanup_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
-                       Graphics_Context& graphics_context);
+                       Graphics_Context& graphics_context, Graphics_Context& ui_graphics_context);
 
 
 /* IMAGE VIEWS */
@@ -358,6 +365,7 @@ void create_sync_objects(Vulkan_Context& vulkan_context, Semaphore_Fences_Contex
 
 
 inline bool e_key_pressed = false;
+inline bool q_key_pressed = false;
 inline bool up_key_pressed = false;
 inline bool left_key_pressed = false;
 inline bool down_key_pressed = false;
@@ -395,11 +403,7 @@ void copy_buffer_region(Vulkan_Context& vulkan_context, Command_Buffer_Context& 
                         VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
                         VkDeviceSize srcOffset, VkDeviceSize dstOffset);
 
-struct UI_Push_Constants
-{
-    //TODO: values are temporary for now
-    glm::vec2 screenSize{800.0,600.0};
-};
+
 
 
 void create_ui_render_pass(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);

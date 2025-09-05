@@ -653,14 +653,26 @@ inline bool should_move_block_time_trigger(Tetris_Clock& tetris_clock)
     return false;
 };
 
+enum class Tetris_Game_States
+{
+    Start, // when we first boot up
+    Play, // while the game is playing
+    Game_Over, // when the player game overs, and we allow them to replay the game
+};
+
 struct Game_State
 {
+
+    Tetris_Game_States game_state = Tetris_Game_States::Start;
     Tetris_Clock tetris_clock;
     Tetris_Grid tetris_grid;
     Tetromino current_tetromino;
     float move_timer = 5.0;
     float move_trigger = 0.0;
 };
+
+
+
 
 
 inline std::mt19937& rng() {
@@ -682,8 +694,13 @@ inline Tetromino pick_new_tetromino(VERTEX_DYNAMIC_INFO& vertex_info)
 }
 
 
+
+
 inline void update_game(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_dynamic_info, float dt)
 {
+
+
+
     tetris_clock_update(game_state->tetris_clock, dt);
     if (should_move_block_time_trigger(game_state->tetris_clock))
     {
@@ -716,6 +733,62 @@ inline void update_game(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_dyna
     }
 };
 
+
+
+inline Game_State* init_game_state()
+{
+    Game_State* temp_game_state = static_cast<Game_State *>(malloc(sizeof(Game_State)));
+    //we want to begin in start game mode
+
+    return temp_game_state;
+}
+
+
+inline void init_play_state(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_info)
+{
+    game_state->tetris_grid = create_grid(vertex_info, GRID_COLUMN, GRID_ROW);
+    //game_state->current_block = create_block(vertex_info, O);
+    game_state->current_tetromino = pick_new_tetromino(vertex_info);
+
+    Tetris_Clock tetris_clock;
+    game_state->tetris_clock = tetris_clock;
+    tetris_clock_init(game_state->tetris_clock);
+
+    vertex_info.vertex_buffer_should_update = true;
+}
+
+inline std::vector<Game_State*> start_game;
+inline std::vector<Game_State*> init_play_game; // transition state into play game
+inline std::vector<Game_State*> play_game;
+inline std::vector<Game_State*> game_over;
+
+inline void update_game_DOD(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_dynamic_info, float dt)
+{
+
+    for (auto& game : start_game)
+    {
+        //Our start screen
+    };
+    for (auto& game : init_play_game)
+    {
+        std::cout << "HHIHIH";
+        init_play_state(game, vertex_dynamic_info);
+        play_game.push_back(game);
+    }
+    init_play_game.clear();
+
+    for (auto& game : play_game)
+    {
+        update_game(game, vertex_dynamic_info, dt);
+    }
+    for (auto& game : game_over)
+    {
+
+    }
+
+
+
+}
 
 
 #endif //TETRIS_H

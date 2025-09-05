@@ -98,8 +98,12 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 }
 
 
+
+
 void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_info)
 {
+
+
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
     {
         if (!e_key_pressed)
@@ -197,6 +201,24 @@ void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INF
     {
         space_key_pressed = false;
     }
+
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    {
+        if (!q_key_pressed)
+        {
+            //printf("button pressed\n");
+            //printf("creating a quad\n");
+
+            //TODO: get rid of with ui system
+            // Generate random position and color for the new quad
+            init_play_game.emplace_back(game_state);
+            q_key_pressed = true;
+        }
+    }
+    else
+    {
+        q_key_pressed = false;
+    }
 }
 
 
@@ -205,7 +227,7 @@ void init_vulkan(Vulkan_Context& vulkan_context,
                  Swapchain_Context& swapchain_context,
                  Graphics_Context& graphics_context,
                  Command_Buffer_Context& command_buffer_context,
-                 Semaphore_Fences_Context& semaphore_fences_context)
+                 Semaphore_Fences_Context& semaphore_fences_context, UI_DRAW_INFO& draw_info)
 {
 
     init_window(window_info);
@@ -214,10 +236,10 @@ void init_vulkan(Vulkan_Context& vulkan_context,
     create_surface(vulkan_context, window_info);
     pick_physical_device(vulkan_context);
     create_logical_device(vulkan_context);
-    create_swapchain(vulkan_context, swapchain_context);
+    create_swapchain(vulkan_context, swapchain_context, draw_info);
     create_image_views(vulkan_context, swapchain_context);
     //create_render_pass(vulkan_context, swapchain_context, graphics_context);
-    renderpass_create(vulkan_context, swapchain_context, graphics_context, RENDER_PASS_CLEAR_COLOR_BUFFER_FLAG, false, false);
+    renderpass_create(vulkan_context, swapchain_context, graphics_context, RENDER_PASS_CLEAR_COLOR_BUFFER_FLAG, false, true);
     //TODO: for now
     //renderpass_create(vulkan_context, swapchain_context, graphics_context, RENDER_PASS_CLEAR_COLOR_BUFFER_FLAG, false, true);
     create_graphics_pipeline(vulkan_context.logical_device, swapchain_context, graphics_context);
@@ -277,7 +299,7 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
     /*Checking if our window got resized*/
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context, ui_graphics_context);
+        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context, ui_graphics_context, ui_draw_info);
         return;
     }
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
@@ -359,7 +381,7 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || window_context.framebufferResized)
     {
         window_context.framebufferResized = false;
-        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context, ui_graphics_context);
+        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context, ui_graphics_context, ui_draw_info);
     }
     else if (result != VK_SUCCESS)
     {
@@ -391,7 +413,7 @@ void init_window(GLFW_Window_Context& context)
     //goes full screen
     //context.window = glfwCreateWindow(context.WIDTH, context.HEIGHT, context.WINDOW_NAME, glfwGetPrimaryMonitor(), nullptr);
     glfwSetWindowUserPointer(context.window, &context);
-
+    glfwSetInputMode(context.window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
     glfwSetFramebufferSizeCallback(context.window, framebufferResizeCallback);
 
     std::cout << "INIT WINDOW SUCCESS\n";
@@ -817,7 +839,7 @@ void create_logical_device(Vulkan_Context& vulkan_context)
     std::cout << "CREATE LOGICAL DEVICE SUCCESS\n";
 }
 
-void create_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context)
+void create_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, UI_DRAW_INFO& ui_draw_info)
 {
     /*
     typedef struct VkSwapchainCreateInfoKHR {
@@ -847,6 +869,9 @@ void create_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapcha
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vulkan_context.physical_device, vulkan_context.surface,
                                               &swapchain_context.surface_capabilities);
 
+    ui_draw_info.push_constants.screenSize.x =  swapchain_context.surface_capabilities.currentExtent.width;
+    ui_draw_info.push_constants.screenSize.y =  swapchain_context.surface_capabilities.currentExtent.height;
+
     //query for surface format
     uint32_t surface_format_count;
     vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_context.physical_device, vulkan_context.surface, &surface_format_count,
@@ -870,7 +895,6 @@ void create_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapcha
                                                   &presentModeCount, present_modes_available.data());
     }
 
-    //get the extent
 
 
     //get the max image count for our surface swaps
@@ -966,7 +990,7 @@ VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& presen
 }
 
 void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
-                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context, Graphics_Context& ui_graphics_context)
+                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context, Graphics_Context& ui_graphics_context, UI_DRAW_INFO& ui_draw_info)
 {
     //have the device wait while the screen gets recreated
     int width = 0, height = 0;
@@ -979,32 +1003,35 @@ void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& win
 
     vkDeviceWaitIdle(vulkan_context.logical_device);
 
-    cleanup_swapchain(vulkan_context, swapchain_context, graphics_context);
-    for (auto framebuffer: ui_graphics_context.frame_buffers)
-    {
-        vkDestroyFramebuffer(vulkan_context.logical_device, framebuffer, nullptr);
-    }
+    cleanup_swapchain(vulkan_context, swapchain_context, graphics_context, ui_graphics_context);
 
-    create_swapchain(vulkan_context, swapchain_context);
+    create_swapchain(vulkan_context, swapchain_context, ui_draw_info);
     create_image_views(vulkan_context, swapchain_context);
+    //for world
     create_frame_buffers(vulkan_context, swapchain_context, graphics_context);
+    //for ui
+    create_frame_buffers(vulkan_context, swapchain_context, ui_graphics_context);
+
+    //redraw ui
+    update_UI_on_resize(ui_draw_info);
 }
 
 void cleanup_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
-                       Graphics_Context& graphics_context)
+                       Graphics_Context& graphics_context, Graphics_Context& ui_graphics_context)
 {
     for (auto framebuffer: graphics_context.frame_buffers)
     {
         vkDestroyFramebuffer(vulkan_context.logical_device, framebuffer, nullptr);
     }
+    for (auto ui_framebuffer: ui_graphics_context.frame_buffers)
+    {
+        vkDestroyFramebuffer(vulkan_context.logical_device, ui_framebuffer, nullptr);
+    }
     for (auto imageView: swapchain_context.swap_chain_image_views)
     {
         vkDestroyImageView(vulkan_context.logical_device, imageView, nullptr);
     }
-    for (auto ui_imageView: swapchain_context.ui_swap_chain_image_views)
-    {
-        vkDestroyImageView(vulkan_context.logical_device, ui_imageView, nullptr);
-    }
+
 
     vkDestroySwapchainKHR(vulkan_context.logical_device, swapchain_context.swapchain, nullptr);
 }
@@ -1765,9 +1792,10 @@ void create_sync_objects(Vulkan_Context& vulkan_context, Semaphore_Fences_Contex
 
 void cleanup(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
              Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
-             Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context)
+             Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context, Graphics_Context&
+             ui_graphics_context)
 {
-    cleanup_swapchain(vulkan_context, swapchain_context, graphics_context);
+    cleanup_swapchain(vulkan_context, swapchain_context, graphics_context, ui_graphics_context);
 
     vkDestroyPipeline(vulkan_context.logical_device, graphics_context.graphics_pipeline, nullptr);
     vkDestroyPipelineLayout(vulkan_context.logical_device, graphics_context.pipeline_layout, nullptr);
@@ -2462,6 +2490,7 @@ void ui_record_command_buffer(Swapchain_Context& swapchain_context, Command_Buff
     vkCmdBindIndexBuffer(ui_command_buffer_context.command_buffer[current_frame], ui_command_buffer_context.index_buffer,
                          0, VK_INDEX_TYPE_UINT16);
 
+    //std::cout << "SCREENSIZE: " << ui_info.push_constants.screenSize.x << " , "<< ui_info.push_constants.screenSize.y << '\n';
     //bind push constants
     vkCmdPushConstants(ui_command_buffer_context.command_buffer[current_frame],
         graphics_context.pipeline_layout,
