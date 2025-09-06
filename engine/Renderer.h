@@ -14,6 +14,9 @@
 
 #include <glm/glm.hpp>
 
+#include "vk_command_buffer.h"
+#include "vk_device.h"
+
 //#include "UI.h"
 
 
@@ -116,20 +119,6 @@ static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions
 
 
 
-const std::vector<const char *> instance_extensions = {
-    //VK_KHR_SURFACE_EXTENSION_NAME // this does not work it will cause the instance to fail
-    //"VK_KHR_win32_surface",
-    VK_EXT_DEBUG_UTILS_EXTENSION_NAME
-};
-const std::vector<const char *> validationLayers = {
-    "VK_LAYER_KHRONOS_validation"
-};
-
-const std::vector<const char *> device_extensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME
-    //VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME// I in fact do not use an amd gpu
-};
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -142,19 +131,6 @@ struct GLFW_Window_Context
     bool framebufferResized = false;
 };
 
-//TODO: Split things out where appropriate
-struct Vulkan_Context
-{
-    VkInstance instance;
-    VkDebugUtilsMessengerEXT debugMessenger;
-    VkSurfaceKHR surface;
-    VkPhysicalDevice physical_device = VK_NULL_HANDLE;
-    VkDevice logical_device;
-
-    //TODO: might want to move these elsewhere (maybe)
-    VkQueue graphics_queue;
-    VkQueue present_queue;
-};
 
 
 struct SwapChainSupportDetails
@@ -194,23 +170,7 @@ struct Graphics_Context
     VkPipelineLayout pipeline_layout;
 };
 
-struct Command_Buffer_Context
-{
-    VkBuffer vertex_buffer;
-    VkDeviceMemory vertex_buffer_memory;
 
-    VkBuffer vertex_staging_buffer;
-    VkDeviceMemory vertex_staging_buffer_memory;
-
-    VkBuffer index_buffer;
-    VkDeviceMemory index_buffer_memory;
-
-    VkBuffer index_staging_buffer;
-    VkDeviceMemory index_staging_buffer_memory;
-
-    VkCommandPool command_pool;
-    std::vector<VkCommandBuffer> command_buffer;
-};
 
 
 struct Semaphore_Fences_Context
@@ -238,10 +198,7 @@ void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain
     Command_Buffer_Context& command_buffer_context);
 
 
-//ensure we have validation layer support
-bool ensure_validation_layer_support();
 
-std::vector<const char *> getRequiredExtensions();
 
 
 void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
@@ -261,25 +218,6 @@ void init_window(GLFW_Window_Context& context);
 
 static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
-/* VULKAN INSTANCE*/
-void create_instance(Vulkan_Context& vulkan_context);
-
-/*DEBUG MESSAGES*/
-void create_debug_messanger(VkInstance& instance, VkDebugUtilsMessengerEXT& debugMessenger);
-
-void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);;
-
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-                                      const VkAllocationCallbacks* pAllocator,
-                                      VkDebugUtilsMessengerEXT* pDebugMessenger);
-
-VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                       VkDebugUtilsMessageTypeFlagsEXT messageType,
-                       const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                       void* pUserData);
-
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
-                                   const VkAllocationCallbacks* pAllocator);
 
 /* SURFACE */
 void create_surface(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context);
@@ -331,8 +269,6 @@ void create_render_pass(Vulkan_Context& vulkan_context, Swapchain_Context& swapc
 void create_frame_buffers(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
                           Graphics_Context& graphics_context);
 
-/*COMMAND POOL*/
-void create_command_pool(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
 
 /*VERTEX BUFFER*/
 void create_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
@@ -348,9 +284,6 @@ uint32_t findMemoryType(Vulkan_Context& vulkan_context, uint32_t typeFilter, VkM
 /*INDEX BUFFER*/
 void create_index_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
 
-
-/*COMMAND BUFFER*/
-void create_command_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
 
 /*RECORD BUFFER*/
 void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_Context& command_buffer_context,

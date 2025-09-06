@@ -2,7 +2,8 @@
 
 
 #include <vulkan/vulkan.h>
-#include <Renderer.h>
+#include "vk_device.h"
+#include "Renderer.h"
 
 enum Renderpass_Type
 {
@@ -89,8 +90,8 @@ inline void renderpass_create(Vulkan_Context& vulkan_context, Swapchain_Context&
 }
 
 
-void renderpass_begin(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Command_Buffer_Context* command_buffer,
-                        Graphics_Context& graphics_context, uint32_t image_index, unsigned char clear_flags) {
+inline void renderpass_begin(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Command_Buffer_Context* command_buffer,
+                             Graphics_Context& graphics_context, uint32_t image_index, unsigned char clear_flags) {
 
     //start the render pass
     VkRenderPassBeginInfo render_pass_info{};
@@ -126,6 +127,6 @@ void renderpass_begin(Vulkan_Context& vulkan_context, Swapchain_Context& swapcha
     vkCmdBeginRenderPass(command_buffer->command_buffer[image_index], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void renderpass_end(Command_Buffer_Context* command_buffer, uint32_t frame) {
+inline void renderpass_end(Command_Buffer_Context* command_buffer, uint32_t frame) {
     vkCmdEndRenderPass(command_buffer->command_buffer[frame]);
 }

@@ -27,8 +27,15 @@ add_executable(VulkanTetris main.cpp
         engine/clock.h
         engine/UI.cpp
         engine/UI.h
-        engine/vulkan_renderpass.c
-        engine/vulkan_renderpass.h
+        engine/vk_renderpass.c
+        engine/vk_renderpass.h
+        engine/texture.cpp
+        engine/texture.h
+        engine/vk_command_buffer.h
+        engine/vk_command_buffer.cpp
+        engine/vk_command_buffer.h
+        engine/vk_device.cpp
+        engine/vk_device.h
 )
 
 

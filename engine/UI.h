@@ -442,5 +442,15 @@ inline void ui_update(UI_STATE& ui_state, UI_DRAW_INFO& ui_draw_info, GLFWwindow
 
 
 
+inline void do_text()
+{
+
+
+
+}
+
+
+
+
 
 #endif //UI_H
