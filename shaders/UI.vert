@@ -13,7 +13,7 @@ layout(location = 1) in vec3 incolor;
 layout(location = 0) out vec3 fragColor;
 
 void main() {
-    vec2 ndc = 2.0 * vec2(inPosition.x / pc.screenSize.x, inPosition.y / pc.screenSize.y) - 1.0;
+    vec2 ndc = vec2(inPosition / pc.screenSize) * 2.0 - 1.0;
     gl_Position = vec4(ndc, 0.0, 1.0);
     //gl_Position = (inPosition, 1.0, 1.0);
     fragColor = incolor;

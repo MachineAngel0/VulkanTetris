@@ -202,6 +202,7 @@ void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INF
         space_key_pressed = false;
     }
 
+    /* TODO: meant to start the game while testing the UI capability
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     {
         if (!q_key_pressed)
@@ -218,7 +219,7 @@ void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INF
     else
     {
         q_key_pressed = false;
-    }
+    }*/
 }
 
 

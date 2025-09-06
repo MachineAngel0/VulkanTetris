@@ -23,7 +23,8 @@ int main()
     vertex_info.dynamic_vertices.reserve(MAX_INDICES);
 
     Game_State* game_state = init_game_state();//static_cast<Game_State *>(malloc(sizeof(Game_State)));
-
+    //TODO: emplace into start game when i finally figure out how to render text
+    init_play_game.emplace_back(game_state);
 
     Graphics_Context ui_graphics_context{};
     Command_Buffer_Context ui_command_buffer_context{};
@@ -32,7 +33,7 @@ int main()
     ui_draw_info.push_constants.screenSize = {glm::vec2(600.0f,600.0f)};
     //ui_draw_rect(glm::vec2{100.0,100.0}, glm::vec3{0.0,1.0,0.0}, ui_draw_info);
     //ui_draw_rect(glm::vec2{0.0f,0.0f}, glm::vec2{300.0f, 300.0f}, glm::vec3{0.0,1.0,0.0}, ui_draw_info);
-    ui_draw_rect_screen_size_percentage(glm::vec2{50,50}, glm::vec2{20,20}, glm::vec3{1.0,0.0,0.0}, ui_draw_info);
+    //ui_draw_rect_screen_size_percentage(glm::vec2{50,50}, glm::vec2{20,20}, glm::vec3{1.0,0.0,0.0}, ui_draw_info);
 
 
     init_vulkan(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
