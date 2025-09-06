@@ -13,6 +13,7 @@ add_subdirectory(lib/glm)
 
 include_directories(VulkanTetris ./engine/)
 include_directories(VulkanTetris ./lib/)
+include_directories(VulkanTetris ./assets/)
 
 
 add_executable(VulkanTetris main.cpp
@@ -37,6 +38,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Vulkan::Vulkan
         glfw
         glm
+        ${CMAKE_CURRENT_SOURCE_DIR}/lib/Lib/freetype.lib
 )
 
 target_compile_definitions(VulkanTetris PRIVATE
