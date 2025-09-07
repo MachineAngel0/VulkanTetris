@@ -509,7 +509,6 @@ inline bool can_move(Tetris_Grid& tetris_grid, Tetromino& tetromino, glm::vec2 d
             //printf("NO Y BOTTOM\n");
             return false;
         }
-        std::cout << y_check << '\n';
         //check for a colored block and also if we are above the grids top row
         if (tetris_grid.grid_color[y_check][x_check] != WHITE && tetris_grid.grid_color[y_check][x_check] != GREY && y_check > 0 )
         {
@@ -771,7 +770,6 @@ inline void update_game_DOD(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_
     };
     for (auto& game : init_play_game)
     {
-        std::cout << "HHIHIH";
         init_play_state(game, vertex_dynamic_info);
         play_game.push_back(game);
     }

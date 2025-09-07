@@ -36,12 +36,11 @@ int main()
 
 
     init_vulkan(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-                    semaphore_fences_context, ui_state->draw_info);
-    init_UI_vulkan(vulkan_context, swapchain_context, ui_graphics_context, ui_command_buffer_context);
+                    semaphore_fences_context);
     clock_windows_init();
 
     //TODO: this is here because of a ui bug that idk where its happening
-    recreate_swapchain(vulkan_context, window_info, swapchain_context, graphics_context, ui_graphics_context, ui_state->draw_info);
+    //recreate_swapchain(vulkan_context, window_info, swapchain_context, graphics_context, ui_graphics_context, ui_state->draw_info);
 
     float dt = 0.0f; // in ms
     while (!glfwWindowShouldClose(window_info.window))
@@ -55,12 +54,12 @@ int main()
         key_callback(window_info.window, game_state, vertex_info);
 
         //std::cout << "Mouse" << xpos << ypos << '\n';
-        ui_update(ui_state, window_info.window);
+        //ui_update(ui_state, window_info.window);
 
         update_game_DOD(game_state, vertex_info, dt);
 
         draw_frame(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-                   semaphore_fences_context, vertex_info, ui_graphics_context, ui_command_buffer_context, ui_state->draw_info);
+                   semaphore_fences_context, vertex_info);
     }
 
     vkDeviceWaitIdle(vulkan_context.logical_device);
@@ -69,7 +68,7 @@ int main()
 
 
     cleanup(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-            semaphore_fences_context, ui_graphics_context);
+            semaphore_fences_context);
 
     std::cout << "Bye, World!" << std::endl;
 
