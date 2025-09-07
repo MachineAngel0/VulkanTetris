@@ -37,6 +37,12 @@ struct UI_OBJECT
     glm::vec3 color;
 };
 
+struct UI_DRAW_INFO
+{
+    VERTEX_DYNAMIC_INFO vertex_info;
+    UI_Push_Constants push_constants;
+    std::vector<UI_OBJECT> UI_Objects;
+};
 
 struct UI_STATE
 {
@@ -47,23 +53,21 @@ struct UI_STATE
     int mouse_released = 0;
     glm::vec2 mouse_pos = {-1, -1};
 
-    int layer = 0;
-
-    //TODO: draw info should go here as well
+    UI_DRAW_INFO draw_info{};
 };
 
-inline UI_STATE init_ui_state()
+inline UI_STATE* init_ui_state()
 {
-    return UI_STATE{-1, -1, -1, -1};
+    UI_STATE* ui_state = static_cast<UI_STATE *>(malloc(sizeof(UI_STATE)));
+    ui_state->active.ID = -1;
+    ui_state->active.layer = -1;
+    ui_state->hot.ID = -1;
+    ui_state->hot.layer = -1;
+    return ui_state;
 }
 
 
-struct UI_DRAW_INFO
-{
-    VERTEX_DYNAMIC_INFO vertex_info;
-    UI_Push_Constants push_constants;
-    std::vector<UI_OBJECT> UI_Objects;
-};
+
 
 enum UI_Type
 {
@@ -126,13 +130,13 @@ inline std::vector<Vertex> UI_create_quad_screen_percentage(glm::vec2 pos, glm::
 }
 
 
-inline int ui_draw_rect(glm::vec2 pos, glm::vec2 size, glm::vec3 color, UI_DRAW_INFO& ui_draw_info)
+inline int ui_draw_rect(glm::vec2 pos, glm::vec2 size, glm::vec3 color, UI_STATE& ui_state)
 {
     std::vector<Vertex> new_quad = UI_create_quad(pos, size, color);
-    uint16_t base_index = static_cast<uint16_t>(ui_draw_info.vertex_info.dynamic_vertices.size());
+    uint16_t base_index = static_cast<uint16_t>(ui_state.draw_info.vertex_info.dynamic_vertices.size());
 
     // Add vertices
-    ui_draw_info.vertex_info.dynamic_vertices.insert(ui_draw_info.vertex_info.dynamic_vertices.end(), new_quad.begin(),
+    ui_state.draw_info.vertex_info.dynamic_vertices.insert(ui_state.draw_info.vertex_info.dynamic_vertices.end(), new_quad.begin(),
                                                      new_quad.end());
 
     // Add indices (two triangles per quad)
@@ -145,18 +149,17 @@ inline int ui_draw_rect(glm::vec2 pos, glm::vec2 size, glm::vec3 color, UI_DRAW_
         static_cast<uint16_t>(base_index + 0)
     };
 
-    ui_draw_info.vertex_info.dynamic_indices.insert(ui_draw_info.vertex_info.dynamic_indices.end(),
+    ui_state.draw_info.vertex_info.dynamic_indices.insert(ui_state.draw_info.vertex_info.dynamic_indices.end(),
                                                     quad_indices.begin(), quad_indices.end());
 
 
-    ui_draw_info.vertex_info.vertex_buffer_should_update = true;
+    ui_state.draw_info.vertex_info.vertex_buffer_should_update = true;
 
-    return ui_draw_info.vertex_info.mesh_id++;
+    return ui_state.draw_info.vertex_info.mesh_id++;
 };
 
 
-inline int ui_draw_rect_screen_size_percentage(glm::vec2 pos, glm::vec2 screen_percentage, glm::vec3 color,
-                                               UI_DRAW_INFO& ui_draw_info)
+inline int ui_draw_rect_screen_size_percentage(UI_STATE* ui_state, glm::vec2 pos, glm::vec2 screen_percentage, glm::vec3 color)
 {
     //TODO: so rn its based on the topleft corner, but i want to expand the object from the center of where i put it not from top left
 
@@ -184,13 +187,13 @@ inline int ui_draw_rect_screen_size_percentage(glm::vec2 pos, glm::vec2 screen_p
 
     //these are the values in our vertex, but not in our ui_object
     glm::vec2 final_pos = {
-        ui_draw_info.push_constants.screenSize.x * converted_pos.x,
-        ui_draw_info.push_constants.screenSize.y * converted_pos.y
+        ui_state->draw_info.push_constants.screenSize.x * converted_pos.x,
+        ui_state->draw_info.push_constants.screenSize.y * converted_pos.y
     };
 
     glm::vec2 final_size = {
-        (ui_draw_info.push_constants.screenSize.x * converted_size.x) / 2,
-        (ui_draw_info.push_constants.screenSize.y * converted_size.y) / 2
+        (ui_state->draw_info.push_constants.screenSize.x * converted_size.x) / 2,
+        (ui_state->draw_info.push_constants.screenSize.y * converted_size.y) / 2
     };
 
 
@@ -213,10 +216,10 @@ inline int ui_draw_rect_screen_size_percentage(glm::vec2 pos, glm::vec2 screen_p
     std::cout << "QUAD:" << new_quad[2].pos.x << new_quad[2].pos.y << '\n';
     std::cout << "QUAD:" << new_quad[3].pos.x << new_quad[3].pos.y << '\n';
 
-    uint16_t base_index = static_cast<uint16_t>(ui_draw_info.vertex_info.dynamic_vertices.size());
+    uint16_t base_index = static_cast<uint16_t>(ui_state->draw_info.vertex_info.dynamic_vertices.size());
 
     // Add vertices
-    ui_draw_info.vertex_info.dynamic_vertices.insert(ui_draw_info.vertex_info.dynamic_vertices.end(), new_quad.begin(),
+    ui_state->draw_info.vertex_info.dynamic_vertices.insert(ui_state->draw_info.vertex_info.dynamic_vertices.end(), new_quad.begin(),
                                                      new_quad.end());
 
     // Add indices (two triangles per quad)
@@ -229,20 +232,20 @@ inline int ui_draw_rect_screen_size_percentage(glm::vec2 pos, glm::vec2 screen_p
         static_cast<uint16_t>(base_index + 0)
     };
 
-    ui_draw_info.vertex_info.dynamic_indices.insert(ui_draw_info.vertex_info.dynamic_indices.end(),
+    ui_state->draw_info.vertex_info.dynamic_indices.insert(ui_state->draw_info.vertex_info.dynamic_indices.end(),
                                                     quad_indices.begin(), quad_indices.end());
 
 
-    ui_draw_info.vertex_info.vertex_buffer_should_update = true;
+    ui_state->draw_info.vertex_info.vertex_buffer_should_update = true;
 
-    UI_OBJECT new_ui_object = {{ui_draw_info.vertex_info.mesh_id, 0}, converted_pos, converted_size, color};
+    UI_OBJECT new_ui_object = {{ui_state->draw_info.vertex_info.mesh_id, 0}, converted_pos, converted_size, color};
 
     //increment id
-    ui_draw_info.vertex_info.mesh_id++;
+    ui_state->draw_info.vertex_info.mesh_id++;
 
-    ui_draw_info.UI_Objects.emplace_back(new_ui_object);
+    ui_state->draw_info.UI_Objects.emplace_back(new_ui_object);
 
-    return ui_draw_info.vertex_info.mesh_id;
+    return ui_state->draw_info.vertex_info.mesh_id;
 };
 
 
@@ -351,30 +354,30 @@ bool button(UI_STATE& ui_state, int id, int x, int y)
 }*/
 
 //check if we can use the button
-inline bool do_button(UI_Push_Constants ui_push_constants, UI_STATE ui_state, UI_OBJECT ui_object)
+inline bool do_button(UI_STATE* ui_state, UI_OBJECT ui_object)
 {
     //checking if we released the button and we are inside the hit region
-    if (ui_state.mouse_down == 0 &&
-        ui_state.active.ID == ui_object.id.ID and region_hit(ui_push_constants, ui_object, ui_state.mouse_pos))
+    if (ui_state->mouse_down == 0 &&
+        ui_state->active.ID == ui_object.id.ID and region_hit(ui_state->draw_info.push_constants, ui_object, ui_state->mouse_pos))
         return true;
 
     return false;
 }
 
-inline void ui_update(UI_STATE& ui_state, UI_DRAW_INFO& ui_draw_info, GLFWwindow* window)
+inline void ui_update(UI_STATE* ui_state, GLFWwindow* window)
 {
     //TODO: for the future, set the highest layer as the active ui, doesn't matter rn
     //set our UI's states
-    for (auto& ui_object: ui_draw_info.UI_Objects)
+    for (auto& ui_object: ui_state->draw_info.UI_Objects)
     {
-        if (region_hit(ui_draw_info.push_constants, ui_object, ui_state.mouse_pos))
+        if (region_hit(ui_state->draw_info.push_constants, ui_object, ui_state->mouse_pos))
         {
-            ui_state.hot = ui_object.id;
+            ui_state->hot = ui_object.id;
             //std::cout << "HOT:" << ui_object.id.ID << std::endl;
 
-            if (ui_state.active.ID == -1 && ui_state.mouse_down == GLFW_PRESS)
+            if (ui_state->active.ID == -1 && ui_state->mouse_down == GLFW_PRESS)
             {
-                ui_state.active = ui_object.id;
+                ui_state->active = ui_object.id;
                 //std::cout << "active:" << ui_object.id.ID << std::endl;
             }
         }
@@ -383,7 +386,7 @@ inline void ui_update(UI_STATE& ui_state, UI_DRAW_INFO& ui_draw_info, GLFWwindow
 
     //todo: this should be moved to the do button function
     //setting any colors
-    for (auto& ui_object: ui_draw_info.UI_Objects)
+    for (auto& ui_object: ui_state->draw_info.UI_Objects)
     {
         /*
         std::cout << "hot id: " << ui_state.hot.ID << '\n';
@@ -391,19 +394,19 @@ inline void ui_update(UI_STATE& ui_state, UI_DRAW_INFO& ui_draw_info, GLFWwindow
         */
 
         //active state
-        if (ui_state.active.ID == ui_object.id.ID)
+        if (ui_state->active.ID == ui_object.id.ID)
         {
             for (int i = ui_object.id.ID * 4; i < ui_object.id.ID + 4; i++)
             {
-                ui_draw_info.vertex_info.dynamic_vertices[i].color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+                ui_state->draw_info.vertex_info.dynamic_vertices[i].color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
             }
         }
         //hot state
-        else if (ui_state.hot.ID == ui_object.id.ID)
+        else if (ui_state->hot.ID == ui_object.id.ID)
         {
             for (int i = ui_object.id.ID * 4; i < ui_object.id.ID + 4; i++)
             {
-                ui_draw_info.vertex_info.dynamic_vertices[i].color = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+                ui_state->draw_info.vertex_info.dynamic_vertices[i].color = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
             }
         }
         // normal state
@@ -411,33 +414,33 @@ inline void ui_update(UI_STATE& ui_state, UI_DRAW_INFO& ui_draw_info, GLFWwindow
         {
             for (int i = ui_object.id.ID * 4; i < ui_object.id.ID + 4; i++)
             {
-                ui_draw_info.vertex_info.dynamic_vertices[i].color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+                ui_state->draw_info.vertex_info.dynamic_vertices[i].color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
             }
         }
 
-        if (do_button(ui_draw_info.push_constants, ui_state, ui_object))
+        if (do_button(ui_state, ui_object))
         {
             std::cout << "Click\n";
         };
     }
 
 
-    ui_draw_info.vertex_info.vertex_buffer_should_update = true;
+    ui_state->draw_info.vertex_info.vertex_buffer_should_update = true;
     //std::cout << "MOUSE STATE:" << ui_state.mouse_down << '\n';
 
-    ui_state.hot.ID = -1;
-    //clear the ui
-    ui_state.layer = -1;
-    if (ui_state.mouse_down == GLFW_RELEASE)
+    ui_state->hot.ID = -1;
+    ui_state->hot.layer = -1;
+
+    if (ui_state->mouse_down == GLFW_RELEASE)
     {
         //std::cout << "mouse released\n";
-        ui_state.active.ID = -1;
+        ui_state->active.ID = -1;
     }
 
     //update mouse state
-    ui_state.mouse_down = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+    ui_state->mouse_down = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
     //update mouse pos
-    ui_state.mouse_pos = get_mouse_pos(window);
+    ui_state->mouse_pos = get_mouse_pos(window);
 }
 
 
