@@ -8,17 +8,8 @@
 
 struct Command_Buffer_Context
 {
-    VkBuffer vertex_buffer;
-    VkDeviceMemory vertex_buffer_memory;
 
-    VkBuffer vertex_staging_buffer;
-    VkDeviceMemory vertex_staging_buffer_memory;
-
-    VkBuffer index_buffer;
-    VkDeviceMemory index_buffer_memory;
-
-    VkBuffer index_staging_buffer;
-    VkDeviceMemory index_staging_buffer_memory;
+    //TODO: eveything above needs to be moved out, they are normal buffers not command buffers
 
     VkCommandPool command_pool;
     std::vector<VkCommandBuffer> command_buffer;

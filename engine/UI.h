@@ -18,7 +18,7 @@
 struct UI_Push_Constants
 {
     //TODO: values are temporary for now
-    glm::vec2 screenSize{800.0, 600.0};
+    glm::vec2 screenSize{800.0f, 600.0f};
 };
 
 
@@ -130,13 +130,13 @@ inline std::vector<Vertex> UI_create_quad_screen_percentage(glm::vec2 pos, glm::
 }
 
 
-inline int ui_draw_rect(glm::vec2 pos, glm::vec2 size, glm::vec3 color, UI_STATE& ui_state)
+inline int ui_draw_rect(glm::vec2 pos, glm::vec2 size, glm::vec3 color, UI_STATE* ui_state)
 {
     std::vector<Vertex> new_quad = UI_create_quad(pos, size, color);
-    uint16_t base_index = static_cast<uint16_t>(ui_state.draw_info.vertex_info.dynamic_vertices.size());
+    uint16_t base_index = static_cast<uint16_t>(ui_state->draw_info.vertex_info.dynamic_vertices.size());
 
     // Add vertices
-    ui_state.draw_info.vertex_info.dynamic_vertices.insert(ui_state.draw_info.vertex_info.dynamic_vertices.end(), new_quad.begin(),
+    ui_state->draw_info.vertex_info.dynamic_vertices.insert(ui_state->draw_info.vertex_info.dynamic_vertices.end(), new_quad.begin(),
                                                      new_quad.end());
 
     // Add indices (two triangles per quad)
@@ -149,13 +149,13 @@ inline int ui_draw_rect(glm::vec2 pos, glm::vec2 size, glm::vec3 color, UI_STATE
         static_cast<uint16_t>(base_index + 0)
     };
 
-    ui_state.draw_info.vertex_info.dynamic_indices.insert(ui_state.draw_info.vertex_info.dynamic_indices.end(),
+    ui_state->draw_info.vertex_info.dynamic_indices.insert(ui_state->draw_info.vertex_info.dynamic_indices.end(),
                                                     quad_indices.begin(), quad_indices.end());
 
 
-    ui_state.draw_info.vertex_info.vertex_buffer_should_update = true;
+    ui_state->draw_info.vertex_info.vertex_buffer_should_update = true;
 
-    return ui_state.draw_info.vertex_info.mesh_id++;
+    return ui_state->draw_info.vertex_info.mesh_id++;
 };
 
 
@@ -186,6 +186,7 @@ inline int ui_draw_rect_screen_size_percentage(UI_STATE* ui_state, glm::vec2 pos
     glm::vec2 converted_size = screen_percentage / 100.0f;
 
     //these are the values in our vertex, but not in our ui_object
+    /*
     glm::vec2 final_pos = {
         ui_state->draw_info.push_constants.screenSize.x * converted_pos.x,
         ui_state->draw_info.push_constants.screenSize.y * converted_pos.y
@@ -195,6 +196,17 @@ inline int ui_draw_rect_screen_size_percentage(UI_STATE* ui_state, glm::vec2 pos
         (ui_state->draw_info.push_constants.screenSize.x * converted_size.x) / 2,
         (ui_state->draw_info.push_constants.screenSize.y * converted_size.y) / 2
     };
+    */
+
+    glm::vec2 final_pos = {
+        ui_state->draw_info.push_constants.screenSize.x * converted_pos.x,
+        ui_state->draw_info.push_constants.screenSize.y * converted_pos.y
+    };
+    glm::vec2 final_size = {
+        (ui_state->draw_info.push_constants.screenSize.x * converted_size.x) / 2,
+        (ui_state->draw_info.push_constants.screenSize.y * converted_size.y) / 2
+    };
+
 
 
     //std::vector<Vertex> new_quad = UI_create_quad(pos, screen_percentage, color);
@@ -209,20 +221,27 @@ inline int ui_draw_rect_screen_size_percentage(UI_STATE* ui_state, glm::vec2 pos
                 {{final_pos.x + final_size.x, final_pos.y + final_size.y}, {color}},
                 {{final_pos.x + final_size.x, final_pos.y}, {color}}
     };*/
+
+    /*
+    printf("Final Pos %f, %f\n", final_pos.x, final_pos.y);
+    printf("Final SIZE %f, %f\n", final_size.x, final_size.y);
+    */
+
+
     std::vector<Vertex> new_quad = UI_create_quad_screen_percentage(final_pos, final_size, color);
 
+    /*
     std::cout << "QUAD:" << new_quad[0].pos.x << new_quad[0].pos.y << '\n';
     std::cout << "QUAD:" << new_quad[1].pos.x << new_quad[1].pos.y << '\n';
     std::cout << "QUAD:" << new_quad[2].pos.x << new_quad[2].pos.y << '\n';
     std::cout << "QUAD:" << new_quad[3].pos.x << new_quad[3].pos.y << '\n';
+    */
 
     uint16_t base_index = static_cast<uint16_t>(ui_state->draw_info.vertex_info.dynamic_vertices.size());
 
-    // Add vertices
-    ui_state->draw_info.vertex_info.dynamic_vertices.insert(ui_state->draw_info.vertex_info.dynamic_vertices.end(), new_quad.begin(),
-                                                     new_quad.end());
 
-    // Add indices (two triangles per quad)
+
+    // create indices (two triangles per quad)
     std::vector<uint16_t> quad_indices = {
         static_cast<uint16_t>(base_index + 0),
         static_cast<uint16_t>(base_index + 1),
@@ -232,6 +251,12 @@ inline int ui_draw_rect_screen_size_percentage(UI_STATE* ui_state, glm::vec2 pos
         static_cast<uint16_t>(base_index + 0)
     };
 
+
+    // Add vertices
+    ui_state->draw_info.vertex_info.dynamic_vertices.insert(ui_state->draw_info.vertex_info.dynamic_vertices.end(), new_quad.begin(),
+                                                     new_quad.end());
+
+    // Add indices
     ui_state->draw_info.vertex_info.dynamic_indices.insert(ui_state->draw_info.vertex_info.dynamic_indices.end(),
                                                     quad_indices.begin(), quad_indices.end());
 

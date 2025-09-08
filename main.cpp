@@ -15,6 +15,7 @@ int main()
     Swapchain_Context swapchain_context{};
     Graphics_Context graphics_context{};
     Command_Buffer_Context command_buffer_context{};
+    Buffer_Context buffer_context{};
     Semaphore_Fences_Context semaphore_fences_context{};
 
     // reserve space for the vertice data
@@ -27,17 +28,23 @@ int main()
     init_play_game.emplace_back(game_state);
 
     Graphics_Context ui_graphics_context{};
-    Command_Buffer_Context ui_command_buffer_context{};
+    Buffer_Context ui_buffer_context{};
     UI_STATE* ui_state = init_ui_state();
-    ui_state->draw_info.push_constants.screenSize = {glm::vec2(600.0f,600.0f)};
-    //ui_draw_rect(glm::vec2{100.0,100.0}, glm::vec3{0.0,1.0,0.0}, ui_draw_info);
-    //ui_draw_rect(glm::vec2{0.0f,0.0f}, glm::vec2{300.0f, 300.0f}, glm::vec3{0.0,1.0,0.0}, ui_draw_info);
+    //ui_state->draw_info.push_constants.screenSize = {glm::vec2(800.0f,600.0f)};
+    //ui_draw_rect(glm::vec2{100.0,100.0}, glm::vec2{0.2f, 0.2f}, glm::vec3{0.0,1.0,0.0}, ui_state);
+    //ui_draw_rect(glm::vec2{0.0f,0.0f}, glm::vec2{300.0f, 300.0f}, glm::vec3{0.0,1.0,0.0}, ui_state);
+
+
+    init_vulkan(vulkan_context, window_info, swapchain_context, graphics_context, buffer_context,
+                command_buffer_context, semaphore_fences_context);
+    init_UI_vulkan(vulkan_context, swapchain_context, ui_graphics_context, graphics_context, command_buffer_context, ui_buffer_context, ui_state->draw_info);
+
+    //this has to be here because the ui state wont have the window size until vulkan inits itself with the window
     ui_draw_rect_screen_size_percentage(ui_state, glm::vec2{50,50}, glm::vec2{20,20}, glm::vec3{1.0,0.0,0.0});
 
-
-    init_vulkan(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-                    semaphore_fences_context);
     clock_windows_init();
+
+    //recreate_swapchain(vulkan_context, window_info, swapchain_context, graphics_context);
 
     //TODO: this is here because of a ui bug that idk where its happening
     //recreate_swapchain(vulkan_context, window_info, swapchain_context, graphics_context, ui_graphics_context, ui_state->draw_info);
@@ -53,13 +60,12 @@ int main()
         glfwPollEvents();
         key_callback(window_info.window, game_state, vertex_info);
 
-        //std::cout << "Mouse" << xpos << ypos << '\n';
-        //ui_update(ui_state, window_info.window);
+        ui_update(ui_state, window_info.window);
 
         update_game_DOD(game_state, vertex_info, dt);
 
         draw_frame(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-                   semaphore_fences_context, vertex_info);
+                   buffer_context, vertex_info, semaphore_fences_context, ui_graphics_context, ui_buffer_context, ui_state->draw_info);
     }
 
     vkDeviceWaitIdle(vulkan_context.logical_device);
@@ -68,7 +74,7 @@ int main()
 
 
     cleanup(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-            semaphore_fences_context);
+            buffer_context, semaphore_fences_context);
 
     std::cout << "Bye, World!" << std::endl;
 

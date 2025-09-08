@@ -8,12 +8,9 @@
 #include <cstring>
 
 #include "Mesh.h"
-#include "vk_renderpass.h"
 #include "Tetris.h"
 #include "UI.h"
-
-
-
+#include "vk_renderpass.h"
 
 
 void key_callback(GLFWwindow* window, Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_info)
@@ -143,6 +140,7 @@ void init_vulkan(Vulkan_Context& vulkan_context,
                  GLFW_Window_Context& window_info,
                  Swapchain_Context& swapchain_context,
                  Graphics_Context& graphics_context,
+                 Buffer_Context& buffer_context,
                  Command_Buffer_Context& command_buffer_context,
                  Semaphore_Fences_Context& semaphore_fences_context)
 {
@@ -155,27 +153,41 @@ void init_vulkan(Vulkan_Context& vulkan_context,
     create_logical_device(vulkan_context);
     create_swapchain(vulkan_context, swapchain_context);
     create_image_views(vulkan_context, swapchain_context);
-    //create_render_pass(vulkan_context, swapchain_context, graphics_context);
     renderpass_create(vulkan_context, swapchain_context, graphics_context, RENDER_PASS_CLEAR_COLOR_BUFFER_FLAG, false, false);
     //TODO: for now
     //renderpass_create(vulkan_context, swapchain_context, graphics_context, RENDER_PASS_CLEAR_COLOR_BUFFER_FLAG, false, true);
-    create_graphics_pipeline(vulkan_context.logical_device, swapchain_context, graphics_context);
+    create_graphics_pipeline(vulkan_context, swapchain_context, graphics_context);
     create_frame_buffers(vulkan_context, swapchain_context, graphics_context);
     command_pool_allocate(vulkan_context, command_buffer_context);
-    //create_vertex_buffer(vulkan_context, command_buffer_context);
-    //create_index_buffer(vulkan_context, command_buffer_context);
-    create_vertex_buffer_new(vulkan_context, command_buffer_context);
-    create_index_buffer_new(vulkan_context, command_buffer_context);
+    create_vertex_buffer_new(vulkan_context, command_buffer_context, buffer_context);
+    create_index_buffer_new(vulkan_context, command_buffer_context, buffer_context);
     command_buffer_allocate(vulkan_context, command_buffer_context, MAX_FRAMES_IN_FLIGHT);
     create_sync_objects(vulkan_context, semaphore_fences_context);
 }
 
 
+void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& ui_graphics_context,
+                    Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info)
+{
+    //only the buffer context needs to be different
+
+    //vertex and index information
+    //same renderpass
+    //different graphics pipeline
+
+    ui_draw_info.push_constants.screenSize.x =  swapchain_context.surface_capabilities.currentExtent.width;
+    ui_draw_info.push_constants.screenSize.y =  swapchain_context.surface_capabilities.currentExtent.height;
+
+    create_vertex_buffer_new(vulkan_context, command_buffer_context, ui_buffer_context);
+    create_index_buffer_new(vulkan_context, command_buffer_context, ui_buffer_context);
+    create_ui_graphics_pipeline(vulkan_context, ui_graphics_context, graphics_context);
+}
+
 
 void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
                 Swapchain_Context& swapchain_context,
                 Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context,
-                Semaphore_Fences_Context& semaphore_fences_info, VERTEX_DYNAMIC_INFO& vertex_info)
+                Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info, Semaphore_Fences_Context& semaphore_fences_info, Graphics_Context& ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info)
 {
 
     /*
@@ -204,7 +216,7 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
     /*Checking if our window got resized*/
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context);
+        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context, ui_draw_info);
         return;
     }
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
@@ -217,9 +229,11 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
     vkResetFences(vulkan_context.logical_device, 1,
                   &semaphore_fences_info.in_flight_fence[semaphore_fences_info.currentFrame]);
 
-    //update_vertex_buffer_recreate(vulkan_context, command_buffer_context);
-    update_vertex_buffer_update(vulkan_context, command_buffer_context, vertex_info);
-    //ui_update_vertex_buffer_update(vulkan_context, ui_command_buffer_context, ui_draw_info.vertex_info); // TODO:
+    //WORLD
+    update_vertex_buffer_update(vulkan_context, command_buffer_context, buffer_context, vertex_info);
+
+    //UI
+    update_vertex_buffer_update(vulkan_context, command_buffer_context, ui_buffer_context, ui_draw_info.vertex_info);
 
     /* Record a command buffer which draws the scene onto that image */
 
@@ -228,7 +242,7 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
 
 
     //WORLD DRAW COMMAND
-    record_command_buffer(swapchain_context, command_buffer_context, graphics_context, vertex_info, image_index,semaphore_fences_info.currentFrame);
+    record_command_buffer(swapchain_context, command_buffer_context, graphics_context, buffer_context, vertex_info,image_index, semaphore_fences_info.currentFrame, ui_graphics_context, ui_buffer_context, ui_draw_info);
 
     //UI DRAW COMMAND
     //ui_record_command_buffer(swapchain_context, ui_command_buffer_context, ui_graphics_context, ui_draw_info, image_index, semaphore_fences_info.currentFrame);
@@ -286,7 +300,7 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || window_context.framebufferResized)
     {
         window_context.framebufferResized = false;
-        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context);
+        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context, ui_draw_info);
     }
     else if (result != VK_SUCCESS)
     {
@@ -773,7 +787,7 @@ VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& presen
 }
 
 void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
-                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context)
+                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context, UI_DRAW_INFO& ui_draw_info)
 {
     //have the device wait while the screen gets recreated
     int width = 0, height = 0;
@@ -791,6 +805,7 @@ void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& win
     create_swapchain(vulkan_context, swapchain_context);
     create_image_views(vulkan_context, swapchain_context);
     create_frame_buffers(vulkan_context, swapchain_context, graphics_context);
+    //TODO: update_UI_on_resize(ui_draw_info);
 
 }
 
@@ -864,7 +879,7 @@ void create_image_views(Vulkan_Context& vulkan_context, Swapchain_Context& swapc
     std::cout << "CREATE IMAGEVIEWS SUCCESS\n";
 }
 
-void create_graphics_pipeline(VkDevice& device, Swapchain_Context& swapchain_context,
+void create_graphics_pipeline(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
                               Graphics_Context& graphics_context)
 {
     //load shaders from file
@@ -872,8 +887,8 @@ void create_graphics_pipeline(VkDevice& device, Swapchain_Context& swapchain_con
     auto frag_shader_code = read_shader_file("../shaders/frag.spv");
     //C:\Users\Adams Humbert\Documents\Clion\VulkanTetris
     //create shader modules for use in the shader stage create info
-    VkShaderModule vert_shader_module = create_shader_module(device, vert_shader_code);
-    VkShaderModule fragment_shader_module = create_shader_module(device, frag_shader_code);
+    VkShaderModule vert_shader_module = create_shader_module(vulkan_context.logical_device, vert_shader_code);
+    VkShaderModule fragment_shader_module = create_shader_module(vulkan_context.logical_device, frag_shader_code);
 
     /*
      // Provided by VK_VERSION_1_0
@@ -1039,10 +1054,11 @@ typedef struct VkPipelineShaderStageCreateInfo {
     pipeline_layout_info.pushConstantRangeCount = 0; // Optional
     pipeline_layout_info.pPushConstantRanges = nullptr; // Optional
 
-    if (vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, &graphics_context.pipeline_layout) != VK_SUCCESS)
+    if (vkCreatePipelineLayout(vulkan_context.logical_device, &pipeline_layout_info, nullptr, &graphics_context.pipeline_layout) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create pipeline layout!");
     }
+
 
     VkGraphicsPipelineCreateInfo graphics_pipeline_info{};
     graphics_pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1071,11 +1087,11 @@ typedef struct VkPipelineShaderStageCreateInfo {
         const VkAllocationCallbacks*                pAllocator,
         VkPipeline*                                 pPipelines);*/
 
-    vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr,
+    vkCreateGraphicsPipelines(vulkan_context.logical_device, VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr,
                               &graphics_context.graphics_pipeline);
 
-    vkDestroyShaderModule(device, fragment_shader_module, nullptr);
-    vkDestroyShaderModule(device, vert_shader_module, nullptr);
+    vkDestroyShaderModule(vulkan_context.logical_device, fragment_shader_module, nullptr);
+    vkDestroyShaderModule(vulkan_context.logical_device, vert_shader_module, nullptr);
     std::cout << "CREATED GRAPHICS PIPELINE SUCCESS\n";
 }
 
@@ -1085,6 +1101,7 @@ std::vector<char> read_shader_file(const std::string& filename)
 
     if (!file.is_open())
     {
+        std::cout << "Failed to open file: " << filename << std::endl;
         throw std::runtime_error("failed to open file!");
     }
 
@@ -1207,7 +1224,7 @@ void create_frame_buffers(Vulkan_Context& vulkan_context, Swapchain_Context& swa
 
 
 
-void create_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
+void create_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context)
 {
     //NOTE: You can use a seperate device for transfering the vertex buffer from CPU to GPU
     //https://vulkan-tutorial.com/Vertex_buffers/Staging_buffer (top of the page)
@@ -1229,15 +1246,15 @@ void create_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context
     //VK_BUFFER_USAGE_TRANSFER_DST_BIT: Buffer can be used as destination in a memory transfer operation.
     create_buffer(vulkan_context, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                  command_buffer_context.vertex_staging_buffer, command_buffer_context.vertex_staging_buffer_memory);
+                  buffer_context.vertex_staging_buffer, buffer_context.vertex_staging_buffer_memory);
 
     // fill in vertex buffer
     // mapping the buffer memory into cpu accessible memory
     void* data;
-    vkMapMemory(vulkan_context.logical_device, command_buffer_context.vertex_staging_buffer_memory, 0, buffer_size, 0, &data);
+    vkMapMemory(vulkan_context.logical_device, buffer_context.vertex_staging_buffer_memory, 0, buffer_size, 0, &data);
     //copy vertex data into the mapped memory and then unmap it
     memcpy(data, vertices.data(), (size_t) buffer_size);
-    vkUnmapMemory(vulkan_context.logical_device, command_buffer_context.vertex_staging_buffer_memory);
+    vkUnmapMemory(vulkan_context.logical_device, buffer_context.vertex_staging_buffer_memory);
 
     //host visible buffer as temporary buffer and use a device local one as actual vertex buffer.
 
@@ -1258,11 +1275,11 @@ void create_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context
     //vertex buffer in device local memory
     create_buffer(vulkan_context, buffer_size,
                   VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, command_buffer_context.vertex_buffer,
-                  command_buffer_context.vertex_buffer_memory);
+                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer_context.vertex_buffer,
+                  buffer_context.vertex_buffer_memory);
 
     //move for gpu access
-    copy_buffer(vulkan_context, command_buffer_context, command_buffer_context.vertex_staging_buffer, command_buffer_context.vertex_buffer,
+    copy_buffer(vulkan_context, command_buffer_context, buffer_context.vertex_staging_buffer, buffer_context.vertex_buffer,
                 buffer_size);
 
 
@@ -1384,24 +1401,24 @@ uint32_t findMemoryType(Vulkan_Context& vulkan_context, uint32_t typeFilter, VkM
     throw std::runtime_error("failed to find suitable memory type!");
 }
 
-void create_index_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
+void create_index_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context)
 {
     //basically the same thing as create vertex buffer
     VkDeviceSize buffer_size = sizeof(indices[0]) * indices.size();
 
     create_buffer(vulkan_context, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                  command_buffer_context.index_staging_buffer, command_buffer_context.index_staging_buffer_memory);
+                  buffer_context.index_staging_buffer, buffer_context.index_staging_buffer_memory);
 
-    vkMapMemory(vulkan_context.logical_device, command_buffer_context.index_staging_buffer_memory, 0, buffer_size, 0, &data_index);
-    memcpy(data_index, indices.data(), (size_t) buffer_size);
-    vkUnmapMemory(vulkan_context.logical_device, command_buffer_context.index_staging_buffer_memory);
+    vkMapMemory(vulkan_context.logical_device, buffer_context.index_staging_buffer_memory, 0, buffer_size, 0, &buffer_context.data_index);
+    memcpy(buffer_context.data_index, indices.data(), (size_t) buffer_size);
+    vkUnmapMemory(vulkan_context.logical_device, buffer_context.index_staging_buffer_memory);
 
     create_buffer(vulkan_context, buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, command_buffer_context.index_buffer,
-                  command_buffer_context.index_buffer_memory);
+                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer_context.index_buffer,
+                  buffer_context.index_buffer_memory);
 
-    copy_buffer(vulkan_context, command_buffer_context, command_buffer_context.index_staging_buffer, command_buffer_context.index_buffer,
+    copy_buffer(vulkan_context, command_buffer_context, buffer_context.index_staging_buffer, buffer_context.index_buffer,
                 buffer_size);
 
 
@@ -1431,7 +1448,8 @@ void create_command_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Contex
 }
 
 void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_Context& command_buffer_context,
-                           Graphics_Context& graphics_context, VERTEX_DYNAMIC_INFO& vertex_info,uint32_t image_index, uint32_t current_frame)
+                           Graphics_Context& graphics_context, Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info, uint32_t image_index, uint32_t current_frame, Graphics_Context
+                           &ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info)
 {
     VkCommandBufferBeginInfo buffer_begin_info{};
     buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1483,25 +1501,66 @@ void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_
     vkCmdSetScissor(command_buffer_context.command_buffer[current_frame], 0, 1, &scissor);
 
     //bind the vertex buffer
-    VkBuffer vertex_buffer[] = {command_buffer_context.vertex_buffer};
+    //VkBuffer vertex_buffer[] = {buffer_context.vertex_buffer}; // IDK WHY THIS IS IN THE VULKAN TUTORIAL
     VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(command_buffer_context.command_buffer[current_frame], 0, 1, vertex_buffer, offsets);
+    vkCmdBindVertexBuffers(command_buffer_context.command_buffer[current_frame], 0, 1, &buffer_context.vertex_buffer, offsets);
 
     //bind index buffer, there can only ever be one index buffer, but you can have multiple vertex buffers
     //the possible types are VK_INDEX_TYPE_UINT16 and VK_INDEX_TYPE_UINT32.
-    vkCmdBindIndexBuffer(command_buffer_context.command_buffer[current_frame], command_buffer_context.index_buffer,
+    vkCmdBindIndexBuffer(command_buffer_context.command_buffer[current_frame], buffer_context.index_buffer,
                          0, VK_INDEX_TYPE_UINT16);
 
     //for vertex only draw
     //vkCmdDraw(command_buffer_context.command_buffer[current_frame], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
     //for vertex + indices
-    /* old version, doesn't change dynamically
-    vkCmdDrawIndexed(command_buffer_context.command_buffer[current_frame], static_cast<uint32_t>(indicies.size()),
-                         1, 0, 0, 0);*/
+    ///old version, doesn't change dynamically
+    //vkCmdDrawIndexed(command_buffer_context.command_buffer[current_frame], static_cast<uint32_t>(indicies.size()),
+     //                    1, 0, 0, 0);
 
     vkCmdDrawIndexed(command_buffer_context.command_buffer[current_frame],
                      static_cast<uint32_t>(vertex_info.dynamic_indices.size()),
                      1, 0, 0, 0);
+
+    /***************************
+     * UI
+     **************************/
+
+
+    vkCmdBindPipeline(command_buffer_context.command_buffer[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      ui_graphics_context.graphics_pipeline);
+
+    //bind the vertex buffer
+    VkBuffer vk_buffer2 = {ui_buffer_context.vertex_buffer};
+    VkDeviceSize ui_offsets[] = {0};
+
+    //vkCmdPushConstants(command_buffer_context.command_buffer[current_frame], ui_graphics_context.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(UI_Push_Constants), &ui_draw_info.push_constants);
+
+    vkCmdPushConstants(command_buffer_context.command_buffer[current_frame],
+       ui_graphics_context.pipeline_layout,
+       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+       0,
+       sizeof(UI_Push_Constants),
+       &ui_draw_info.push_constants);
+
+    vkCmdBindVertexBuffers(command_buffer_context.command_buffer[current_frame], 0, 1, &vk_buffer2, ui_offsets);
+
+    vkCmdBindIndexBuffer(command_buffer_context.command_buffer[current_frame], ui_buffer_context.index_buffer,
+                         0, VK_INDEX_TYPE_UINT16);
+
+    /*
+    vkCmdPushConstants(command_buffer_context.command_buffer[current_frame],
+       ui_graphics_context.pipeline_layout,
+       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+       0,
+       sizeof(UI_Push_Constants),
+       &ui_draw_info.push_constants);*/
+
+
+    vkCmdDrawIndexed(command_buffer_context.command_buffer[current_frame],
+                         static_cast<uint32_t>(ui_draw_info.vertex_info.dynamic_indices.size()),
+                         1, 0, 0, 0);
+
+
     vkCmdEndRenderPass(command_buffer_context.command_buffer[current_frame]);
 
     if (vkEndCommandBuffer(command_buffer_context.command_buffer[current_frame]) != VK_SUCCESS)
@@ -1543,7 +1602,8 @@ void create_sync_objects(Vulkan_Context& vulkan_context, Semaphore_Fences_Contex
 
 void cleanup(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
              Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
-             Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context)
+             Command_Buffer_Context& command_buffer_context, Buffer_Context&
+             buffer_context, Semaphore_Fences_Context& semaphore_fences_context)
 {
     cleanup_swapchain(vulkan_context, swapchain_context, graphics_context);
 
@@ -1551,17 +1611,7 @@ void cleanup(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
     vkDestroyPipelineLayout(vulkan_context.logical_device, graphics_context.pipeline_layout, nullptr);
     vkDestroyRenderPass(vulkan_context.logical_device, graphics_context.render_pass, nullptr);
 
-    vkDestroyBuffer(vulkan_context.logical_device, command_buffer_context.index_buffer, nullptr);
-    vkFreeMemory(vulkan_context.logical_device, command_buffer_context.index_buffer_memory, nullptr);
-
-    vkDestroyBuffer(vulkan_context.logical_device, command_buffer_context.vertex_buffer, nullptr);
-    vkFreeMemory(vulkan_context.logical_device, command_buffer_context.vertex_buffer_memory, nullptr);
-
-    vkDestroyBuffer(vulkan_context.logical_device, command_buffer_context.index_staging_buffer, nullptr);
-    vkFreeMemory(vulkan_context.logical_device, command_buffer_context.index_staging_buffer_memory, nullptr);
-
-    vkDestroyBuffer(vulkan_context.logical_device, command_buffer_context.vertex_staging_buffer, nullptr);
-    vkFreeMemory(vulkan_context.logical_device, command_buffer_context.vertex_staging_buffer_memory, nullptr);
+    buffer_destroy_free(vulkan_context, buffer_context);
 
 
 
@@ -1594,7 +1644,7 @@ void cleanup(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
 
 
 
-void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, VERTEX_DYNAMIC_INFO& vertex_info)
+void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info)
 {
     //TODO: so while not happening rn, we can use an offset to only copy the new data, instead of the whole buffer over
     //so instead of copy buffer we can use copy_buffer_region, which ill have to double check how it works
@@ -1604,24 +1654,27 @@ void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_
     VkDeviceSize current_vertex_data_size = sizeof(vertices[0]) * vertex_info.dynamic_vertices.size();
 
     //map and copy data
-    vkMapMemory(vulkan_context.logical_device, command_buffer_context.vertex_staging_buffer_memory, 0, vertex_buffer_capacity, 0,
-                &data_vertex);
-    memcpy(data_vertex, vertex_info.dynamic_vertices.data(), current_vertex_data_size);
-    vkUnmapMemory(vulkan_context.logical_device, command_buffer_context.vertex_staging_buffer_memory);
+    //NOTE: YOU TECHNICALLY DONT NEED TO MAP AND UNMAP THE DATA, YOU CAN JUST COPY THE DATA OVER
+
+    //vkMapMemory(vulkan_context.logical_device, command_buffer_context.vertex_staging_buffer_memory, 0, vertex_buffer_capacity, 0,
+     //           &data_vertex);
+    memcpy(buffer_context.data_vertex, vertex_info.dynamic_vertices.data(), current_vertex_data_size);
+    //vkUnmapMemory(vulkan_context.logical_device, command_buffer_context.vertex_staging_buffer_memory);
 
     //transfer from storage buffer/cpu buffer to gpu buffer
-    copy_buffer(vulkan_context, command_buffer_context, command_buffer_context.vertex_staging_buffer, command_buffer_context.vertex_buffer,
-                vertex_buffer_capacity);
+    copy_buffer(vulkan_context, command_buffer_context, buffer_context.vertex_staging_buffer, buffer_context.vertex_buffer,
+                current_vertex_data_size);
+    //last param in copy_buffer used to be vertex_buffer_capacity and index_buffer_capacity respectively
 
 
     VkDeviceSize current_index_data_size = sizeof(indices[0]) * vertex_info.dynamic_indices.size();
 
-    vkMapMemory(vulkan_context.logical_device, command_buffer_context.index_staging_buffer_memory, 0, index_buffer_capacity, 0, &data_index);
-    memcpy(data_index, vertex_info.dynamic_indices.data(), current_index_data_size);
-    vkUnmapMemory(vulkan_context.logical_device, command_buffer_context.index_staging_buffer_memory);
+    //vkMapMemory(vulkan_context.logical_device, command_buffer_context.index_staging_buffer_memory, 0, index_buffer_capacity, 0, &data_index);
+    memcpy(buffer_context.data_index, vertex_info.dynamic_indices.data(), current_index_data_size);
+    //vkUnmapMemory(vulkan_context.logical_device, command_buffer_context.index_staging_buffer_memory);
 
-    copy_buffer(vulkan_context, command_buffer_context, command_buffer_context.index_staging_buffer, command_buffer_context.index_buffer,
-                index_buffer_capacity);
+    copy_buffer(vulkan_context, command_buffer_context, buffer_context.index_staging_buffer, buffer_context.index_buffer,
+                current_index_data_size);
 
     vertex_info.vertex_buffer_should_update = false;
 
@@ -1673,150 +1726,307 @@ void copy_buffer_region(Vulkan_Context& vulkan_context, Command_Buffer_Context& 
 }
 
 
-void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, VERTEX_DYNAMIC_INFO& vertex_info)
-{
-    //so from what i understand, if i want to add something at runtime, it needs to go from cpu to gpu
-    //therefore i need to keep a persistent storage buffer
-
-    if (!vertex_info.vertex_buffer_should_update) return;
-
-    // Wait for device to be idle before updating buffers
-    vkDeviceWaitIdle(vulkan_context.logical_device);
 
 
-    // Create new vertex buffer
-    VkDeviceSize vertex_buffer_size = sizeof(vertex_info.dynamic_vertices[0]) * vertex_info.dynamic_vertices.size();
 
-    VkBuffer vertex_staging_buffer;
-    VkDeviceMemory vertex_staging_buffer_memory;
 
-    create_buffer(vulkan_context, vertex_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                  vertex_staging_buffer, vertex_staging_buffer_memory);
-
-    void* vertex_data;
-    vkMapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, 0, vertex_buffer_size, 0, &vertex_data);
-    memcpy(vertex_data, vertex_info.dynamic_vertices.data(), (size_t) vertex_buffer_size);
-    vkUnmapMemory(vulkan_context.logical_device, vertex_staging_buffer_memory);
-
-    create_buffer(vulkan_context, vertex_buffer_size,
-                  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, command_buffer_context.vertex_buffer,
-                  command_buffer_context.vertex_buffer_memory);
-
-    copy_buffer(vulkan_context, command_buffer_context, vertex_staging_buffer,
-                command_buffer_context.vertex_buffer, vertex_buffer_size);
-
-    vkDestroyBuffer(vulkan_context.logical_device, vertex_staging_buffer, nullptr);
-    vkFreeMemory(vulkan_context.logical_device, vertex_staging_buffer_memory, nullptr);
-
-    // Create new index buffer
-    VkDeviceSize index_buffer_size = sizeof(vertex_info.dynamic_indices[0]) * vertex_info.dynamic_indices.size();
-
-    VkBuffer index_staging_buffer;
-    VkDeviceMemory index_staging_buffer_memory;
-
-    create_buffer(vulkan_context, index_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                  index_staging_buffer, index_staging_buffer_memory);
-
-    void* index_data;
-    vkMapMemory(vulkan_context.logical_device, index_staging_buffer_memory, 0, index_buffer_size, 0, &index_data);
-    memcpy(index_data, vertex_info.dynamic_indices.data(), (size_t) index_buffer_size);
-    vkUnmapMemory(vulkan_context.logical_device, index_staging_buffer_memory);
-
-    create_buffer(vulkan_context, index_buffer_size,
-                  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, command_buffer_context.index_buffer,
-                  command_buffer_context.index_buffer_memory);
-
-    copy_buffer(vulkan_context, command_buffer_context, index_staging_buffer,
-                command_buffer_context.index_buffer, index_buffer_size);
-
-    vkDestroyBuffer(vulkan_context.logical_device, index_staging_buffer, nullptr);
-    vkFreeMemory(vulkan_context.logical_device, index_staging_buffer_memory, nullptr);
-
-    vertex_info.vertex_buffer_should_update = false;
-
-    printf("Updated vertex and index buffers\n");
-}
-
-void create_index_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
+void create_index_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context)
 {
     // Create buffer large enough for maximum indices, not just initial indices
-    index_buffer_capacity = sizeof(uint16_t) * MAX_INDICES; // Use MAX_INDICES instead of indices.size()
+    buffer_context.index_buffer_capacity = sizeof(uint16_t) * MAX_INDICES; // Use MAX_INDICES instead of indices.size()
 
     // Create staging buffer
-    create_buffer(vulkan_context, index_buffer_capacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    create_buffer(vulkan_context, buffer_context.index_buffer_capacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                  command_buffer_context.index_staging_buffer, command_buffer_context.index_staging_buffer_memory);
+                  buffer_context.index_staging_buffer, buffer_context.index_staging_buffer_memory);
 
     // Only copy initial indices data, but allocate full buffer
     VkDeviceSize initial_data_size = sizeof(indices[0]) * indices.size();
 
-    vkMapMemory(vulkan_context.logical_device, command_buffer_context.index_staging_buffer_memory, 0, index_buffer_capacity, 0, &data_index);
+    vkMapMemory(vulkan_context.logical_device, buffer_context.index_staging_buffer_memory, 0, buffer_context.index_buffer_capacity, 0, &buffer_context.data_index);
 
     // Zero out the entire buffer first
-    memset(data_index, 0, index_buffer_capacity);
+    memset(buffer_context.data_index, 0, buffer_context.index_buffer_capacity);
     // Then copy initial data
-    memcpy(data_index, indices.data(), initial_data_size);
+    memcpy(buffer_context.data_index, indices.data(), initial_data_size);
 
-    vkUnmapMemory(vulkan_context.logical_device, command_buffer_context.index_staging_buffer_memory);
+    vkUnmapMemory(vulkan_context.logical_device, buffer_context.index_staging_buffer_memory);
 
     // Create device local buffer with full size
-    create_buffer(vulkan_context, index_buffer_capacity,
+    create_buffer(vulkan_context, buffer_context.index_buffer_capacity,
                   VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, command_buffer_context.index_buffer,
-                  command_buffer_context.index_buffer_memory);
+                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer_context.index_buffer,
+                  buffer_context.index_buffer_memory);
 
     // Copy entire buffer
-    copy_buffer(vulkan_context, command_buffer_context, command_buffer_context.index_staging_buffer, command_buffer_context.index_buffer,
-                index_buffer_capacity);
+    copy_buffer(vulkan_context, command_buffer_context, buffer_context.index_staging_buffer, buffer_context.index_buffer,
+                buffer_context.index_buffer_capacity);
 
 
-    std::cout << "CREATED INDEX BUFFER SUCCESS (Size: " << index_buffer_capacity << " bytes for " << MAX_INDICES <<
+    std::cout << "CREATED INDEX BUFFER SUCCESS (Size: " << buffer_context.index_buffer_capacity << " bytes for " << MAX_INDICES <<
             " indices)\n";
 }
 
 
-void create_vertex_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
+void create_vertex_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context)
 {
     // Create buffer large enough for maximum vertices, not just initial vertices
-    vertex_buffer_capacity = sizeof(Vertex) * MAX_VERTICES; // Use MAX_VERTICES instead of vertices.size()
+    buffer_context.vertex_buffer_capacity = sizeof(Vertex) * MAX_VERTICES; // Use MAX_VERTICES instead of vertices.size()
 
 
-    create_buffer(vulkan_context, vertex_buffer_capacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    create_buffer(vulkan_context, buffer_context.vertex_buffer_capacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                  command_buffer_context.vertex_staging_buffer, command_buffer_context.vertex_staging_buffer_memory);
+                  buffer_context.vertex_staging_buffer, buffer_context.vertex_staging_buffer_memory);
 
     // Only copy initial vertices data, but allocate full buffer
     VkDeviceSize initial_data_size = sizeof(vertices[0]) * vertices.size();
 
-    vkMapMemory(vulkan_context.logical_device, command_buffer_context.vertex_staging_buffer_memory, 0, vertex_buffer_capacity, 0,
-                &data_vertex);
+    vkMapMemory(vulkan_context.logical_device, buffer_context.vertex_staging_buffer_memory, 0, buffer_context.vertex_buffer_capacity, 0,
+                &buffer_context.data_vertex);
 
     // Zero out the entire buffer first
-    memset(data_vertex, 0, vertex_buffer_capacity);
+    memset(buffer_context.data_vertex, 0, buffer_context.vertex_buffer_capacity);
     // Then copy initial data
-    memcpy(data_vertex, vertices.data(), initial_data_size);
-    vkUnmapMemory(vulkan_context.logical_device, command_buffer_context.vertex_staging_buffer_memory);
+    memcpy(buffer_context.data_vertex, vertices.data(), initial_data_size);
+    vkUnmapMemory(vulkan_context.logical_device, buffer_context.vertex_staging_buffer_memory);
 
     // Create device local buffer with full size
-    create_buffer(vulkan_context, vertex_buffer_capacity,
+    create_buffer(vulkan_context, buffer_context.vertex_buffer_capacity,
                   VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, command_buffer_context.vertex_buffer,
-                  command_buffer_context.vertex_buffer_memory);
+                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer_context.vertex_buffer,
+                  buffer_context.vertex_buffer_memory);
 
     // Copy entire buffer (including zeros for unused space)
-    copy_buffer(vulkan_context, command_buffer_context, command_buffer_context.vertex_staging_buffer, command_buffer_context.vertex_buffer,
-                vertex_buffer_capacity);
+    copy_buffer(vulkan_context, command_buffer_context, buffer_context.vertex_staging_buffer, buffer_context.vertex_buffer,
+                buffer_context.vertex_buffer_capacity);
 
 
-    std::cout << "CREATED VERTEX BUFFER SUCCESS (Size: " << vertex_buffer_capacity << " bytes for " << MAX_VERTICES <<
+    std::cout << "CREATED VERTEX BUFFER SUCCESS (Size: " << buffer_context.vertex_buffer_capacity << " bytes for " << MAX_VERTICES <<
             " vertices)\n";
 }
 
+void create_ui_graphics_pipeline(Vulkan_Context& vulkan_context, Graphics_Context& ui_graphics_context, Graphics_Context&
+                                 graphics_context_renderpass_only)
+{
+    //load shaders from file
+    auto vert_shader_code = read_shader_file("../shaders/uivert.spv");
+    auto frag_shader_code = read_shader_file("../shaders/uifrag.spv");
+    //C:\Users\Adams Humbert\Documents\Clion\VulkanTetris
+    //create shader modules for use in the shader stage create info
+    VkShaderModule vert_shader_module = create_shader_module(vulkan_context.logical_device, vert_shader_code);
+    VkShaderModule fragment_shader_module = create_shader_module(vulkan_context.logical_device, frag_shader_code);
 
+    /*
+     // Provided by VK_VERSION_1_0
+typedef struct VkPipelineShaderStageCreateInfo {
+    VkStructureType                     sType;
+    const void*                         pNext;
+    VkPipelineShaderStageCreateFlags    flags;
+    VkShaderStageFlagBits               stage;
+    VkShaderModule                      module;
+    const char*                         pName;
+    const VkSpecializationInfo*         pSpecializationInfo;
+} VkPipelineShaderStageCreateInfo;
+     */
+
+    //create the shader stage info
+    VkPipelineShaderStageCreateInfo vert_shader_stage_info{};
+    vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    //vertShaderStageInfo.pNext;
+    //vertShaderStageInfo.flags;
+    //vertShaderStageInfo.pSpecializationInfo = nullptr;
+    vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vert_shader_stage_info.module = vert_shader_module;
+    vert_shader_stage_info.pName = "main";
+
+    VkPipelineShaderStageCreateInfo frag_shader_stage_info{};
+    frag_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    //vertShaderStageInfo.pNext;
+    //vertShaderStageInfo.flags;
+    //frag_ShaderStageInfo.pSpecializationInfo;
+    frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    frag_shader_stage_info.module = fragment_shader_module;
+    frag_shader_stage_info.pName = "main";
+
+
+    VkPipelineShaderStageCreateInfo shaderStages[] = {vert_shader_stage_info, frag_shader_stage_info};
+
+    //vertex input assembly, describe the format of the vertex data
+    //Bindings: spacing between data and whether the data is per-vertex or per-instance
+    //Attribute descriptions: type of the attributes passed to the vertex shader, which binding to load them from and at which offset
+
+    //TODO: VkVertexInputBindingDescription vertex_binding_description= getBindingDescription();
+    //TODO: std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions();
+
+    auto binding_description = getBindingDescription();
+    auto attribute_description = getAttributeDescriptions();
+
+    VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info{};
+    vertex_input_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    //vertex_input_state_create_info.pNext;
+    //vertex_input_state_create_info.flags;
+    vertex_input_state_create_info.vertexBindingDescriptionCount = 1; // the number of pvertexbinding descriptions
+    vertex_input_state_create_info.pVertexBindingDescriptions = &binding_description;
+    vertex_input_state_create_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute_description.
+        size());
+    vertex_input_state_create_info.pVertexAttributeDescriptions = attribute_description.data();
+
+    //The VkPipelineInputAssemblyStateCreateInfo struct describes two things: what kind of geometry will be drawn from the vertices
+    //and if primitive restart should be enabled.
+    VkPipelineInputAssemblyStateCreateInfo input_assembly{};
+    input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    //pInputAssemblyState.pNext;
+    //pInputAssemblyState.flags;
+    input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    input_assembly.primitiveRestartEnable = VK_FALSE;
+
+    VkPipelineRasterizationStateCreateInfo rasterizer{};
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    //rasterizer.pNext;
+    //rasterizer.flags;
+    rasterizer.depthClampEnable = VK_FALSE; //useful for shadow maps, turn it on but need gpu features
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    // VK_POLYGON_MODE_LINE for wireframes, VK_POLYGON_MODE_POINT for just points, using these require gpu features
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT; //discard back facing triangles
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    //rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+
+    // counter means positive area is front facing, clockwise means negative area is front facing
+    //MIGHT BE USEFUL FOR SHADOW MAPPING
+    rasterizer.depthBiasEnable = VK_FALSE;
+    //rasterizer.depthBiasConstantFactor = 0.0f;
+    //rasterizer.depthBiasClamp = 0.0f;
+    //rasterizer.depthBiasSlopeFactor = 0.0f;
+
+    //not in use for now, but this is where we would do our anti aliasing
+    VkPipelineMultisampleStateCreateInfo multisampling{};
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    //multisampling.minSampleShading = 1.0f; // Optional
+    //multisampling.pSampleMask = nullptr; // Optional
+    //multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
+    //multisampling.alphaToOneEnable = VK_FALSE; // Optional
+
+
+    //TODO:
+    //VkPipelineDepthStencilStateCreateInfo depth_stencil ={};
+
+    //happens after color returns from the fragment shader
+    //METHOD:
+    //Mix the old and new value to produce a final color
+    //Combine the old and new value using a bitwise operation
+    /* Both ways showcased below
+    * if (blendEnable) {
+    finalColor.rgb = (srcColorBlendFactor * newColor.rgb) <colorBlendOp> (dstColorBlendFactor * oldColor.rgb);
+    finalColor.a = (srcAlphaBlendFactor * newColor.a) <alphaBlendOp> (dstAlphaBlendFactor * oldColor.a);
+    }
+    else {
+    finalColor = newColor;
+    }
+    finalColor = finalColor & colorWriteMask;
+     */
+
+    //TODO: I should look more into this later, its kinda like photoshop blend modes
+    // the most important is the src and dst
+    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
+                                          | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+    //colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+    //colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+    //colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
+    //colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+    //colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+    //colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
+
+    VkPipelineColorBlendStateCreateInfo color_blending{};
+    color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    color_blending.logicOpEnable = VK_FALSE;
+    color_blending.logicOp = VK_LOGIC_OP_COPY;
+    color_blending.attachmentCount = 1;
+    color_blending.pAttachments = &colorBlendAttachment; // this thing can be a vector
+    color_blending.blendConstants[0] = 0.0f; // Optional
+    color_blending.blendConstants[1] = 0.0f; // Optional
+    color_blending.blendConstants[2] = 0.0f; // Optional
+    color_blending.blendConstants[3] = 0.0f; // Optional
+
+
+    VkPipelineViewportStateCreateInfo viewport_state{};
+    viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    //viewport_state.pNext;
+    //viewport_state.flags;
+    //viewport_state.pViewports; these two are not needed since we are doing dynamic viewport state
+    //viewport_state.pScissors;
+    viewport_state.viewportCount = 1;
+    viewport_state.scissorCount = 1;
+
+    //for resizing the viewport, can be used for blend constants
+    std::vector<VkDynamicState> dynamicStates = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+    VkPipelineDynamicStateCreateInfo dynamicState{};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+    dynamicState.pDynamicStates = dynamicStates.data();
+
+
+    //Push Constants
+    VkPushConstantRange push_constant_range{};
+    push_constant_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    push_constant_range.offset = 0;
+    push_constant_range.size = sizeof(UI_Push_Constants);
+
+    //used to send info to the vertex/fragment shader, like in uniform buffers, to change shader behavior
+    VkPipelineLayoutCreateInfo pipeline_layout_info{};
+    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipeline_layout_info.setLayoutCount = 0; // Optional
+    pipeline_layout_info.pSetLayouts = nullptr; // Optional
+    pipeline_layout_info.pushConstantRangeCount = 1;
+    pipeline_layout_info.pPushConstantRanges = &push_constant_range;
+
+    if (vkCreatePipelineLayout(vulkan_context.logical_device, &pipeline_layout_info, nullptr, &ui_graphics_context.pipeline_layout) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create pipeline layout!");
+    }
+    VkGraphicsPipelineCreateInfo graphics_pipeline_info{};
+    graphics_pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    graphics_pipeline_info.stageCount = 2;
+    graphics_pipeline_info.pStages = shaderStages;
+    graphics_pipeline_info.pVertexInputState = &vertex_input_state_create_info;
+    graphics_pipeline_info.pInputAssemblyState = &input_assembly;
+    graphics_pipeline_info.pViewportState = &viewport_state;
+    graphics_pipeline_info.pRasterizationState = &rasterizer;
+    graphics_pipeline_info.pMultisampleState = &multisampling;
+    graphics_pipeline_info.pDepthStencilState = nullptr;
+    graphics_pipeline_info.pColorBlendState = &color_blending;
+    graphics_pipeline_info.pDynamicState = &dynamicState;
+    graphics_pipeline_info.layout = ui_graphics_context.pipeline_layout;
+    graphics_pipeline_info.renderPass = graphics_context_renderpass_only.render_pass;
+    graphics_pipeline_info.subpass = 0;
+    graphics_pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+    graphics_pipeline_info.basePipelineIndex = -1;
+
+
+    /*
+    VkResult vkCreateGraphicsPipelines(
+        VkDevice                                    device,
+        VkPipelineCache                             pipelineCache,
+        uint32_t                                    createInfoCount,
+        const VkGraphicsPipelineCreateInfo*         pCreateInfos,
+        const VkAllocationCallbacks*                pAllocator,
+        VkPipeline*                                 pPipelines);*/
+
+    vkCreateGraphicsPipelines(vulkan_context.logical_device, VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr,
+                              &ui_graphics_context.graphics_pipeline);
+
+    vkDestroyShaderModule(vulkan_context.logical_device, fragment_shader_module, nullptr);
+    vkDestroyShaderModule(vulkan_context.logical_device, vert_shader_module, nullptr);
+    std::cout << "CREATED UI GRAPHICS PIPELINE SUCCESS\n";
+}
 
 
 

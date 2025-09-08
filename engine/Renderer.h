@@ -14,8 +14,10 @@
 
 #include <glm/glm.hpp>
 
+#include "vk_buffer.h"
 #include "vk_command_buffer.h"
 #include "vk_device.h"
+
 
 //#include "UI.h"
 
@@ -187,9 +189,11 @@ void init_vulkan(Vulkan_Context& vulkan_context,
                  GLFW_Window_Context& window_info,
                  Swapchain_Context& swapchain_context,
                  Graphics_Context& graphics_context,
-                 Command_Buffer_Context& command_buffer_context,
-                 Semaphore_Fences_Context& semaphore_fences_context);
+                 Buffer_Context& buffer_context,
+                 Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context);
 
+void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& ui_graphics_context,
+                    Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info);
 
 
 
@@ -198,12 +202,14 @@ void init_vulkan(Vulkan_Context& vulkan_context,
 void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
                 Swapchain_Context& swapchain_context,
                 Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context,
-                Semaphore_Fences_Context& semaphore_fences_info, VERTEX_DYNAMIC_INFO& vertex_info);
+                Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info, Semaphore_Fences_Context& semaphore_fences_info,
+                Graphics_Context& ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info);
 
 /*CLEANUP*/
 void cleanup(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_info,
              Swapchain_Context& swapchain_context, Graphics_Context& graphics_context,
-             Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context);
+             Command_Buffer_Context& command_buffer_context, Buffer_Context&
+             buffer_context, Semaphore_Fences_Context& semaphore_fences_context);
 
 /* GLFW WINDOW*/
 void init_window(GLFW_Window_Context& context);
@@ -236,7 +242,7 @@ VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& presen
 
 /* SWAPCHAIN RECREATION */
 void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
-                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
+                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context, UI_DRAW_INFO& ui_draw_info);
 
 void cleanup_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
                        Graphics_Context& graphics_context);
@@ -246,7 +252,7 @@ void cleanup_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapch
 void create_image_views(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context);
 
 /* GRAPHICS PIPELINE*/
-void create_graphics_pipeline(VkDevice& device, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
+void create_graphics_pipeline(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& graphics_context);
 
 std::vector<char> read_shader_file(const std::string& filename);
 
@@ -262,7 +268,7 @@ void create_frame_buffers(Vulkan_Context& vulkan_context, Swapchain_Context& swa
 
 
 /*VERTEX BUFFER*/
-void create_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+void create_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context);
 
 void create_buffer(Vulkan_Context& vulkan_context, VkDeviceSize size, VkBufferUsageFlags usage,
                    VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
@@ -273,15 +279,18 @@ void copy_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command
 uint32_t findMemoryType(Vulkan_Context& vulkan_context, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 /*INDEX BUFFER*/
-void create_index_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+void create_index_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context);
+
+/*SEMAPHORES AND FENCES*/
+void create_sync_objects(Vulkan_Context& vulkan_context, Semaphore_Fences_Context& semaphore_fences_info);
 
 
 /*RECORD BUFFER*/
 void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_Context& command_buffer_context,
-                           Graphics_Context& graphics_context, VERTEX_DYNAMIC_INFO& vertex_info,uint32_t image_index, uint32_t current_frame);
+                           Graphics_Context& graphics_context, Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info, uint32_t image_index, uint32_t current_frame, Graphics_Context
+                           & ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info);
 
-/*SEMAPHORES AND FENCES*/
-void create_sync_objects(Vulkan_Context& vulkan_context, Semaphore_Fences_Context& semaphore_fences_info);
+
 
 
 // Global dynamic vertex storage
@@ -297,10 +306,7 @@ inline bool down_key_pressed = false;
 inline bool right_key_pressed = false;
 inline bool space_key_pressed = false;
 
-static void* data_vertex;
-static VkDeviceSize vertex_buffer_capacity = 0;
-static void* data_index;
-static VkDeviceSize index_buffer_capacity = 0;
+
 
 
 const uint32_t max_object_count = 10000000;
@@ -311,18 +317,23 @@ const uint32_t MAX_INDICES = max_object_count * indices_per_object;
 
 
 
-void update_vertex_buffer_recreate(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, VERTEX_DYNAMIC_INFO& vertex_info);
 
+//this is the current one in use, it doesn't recreate anything, it just replaces the memory
+void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info);
 
-void update_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, VERTEX_DYNAMIC_INFO& vertex_info);
+void create_vertex_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context);
 
-void create_vertex_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
-
-void create_index_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context);
+void create_index_buffer_new(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context);
 
 void copy_buffer_region(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context,
                         VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
                         VkDeviceSize srcOffset, VkDeviceSize dstOffset);
+
+
+
+void create_ui_graphics_pipeline(Vulkan_Context& vulkan_context, Graphics_Context& ui_graphics_context, Graphics_Context&
+                                 graphics_context_renderpass_only);
+
 
 
 #endif //VULKANFROMSPECS_H

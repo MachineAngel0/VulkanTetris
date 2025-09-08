@@ -36,6 +36,8 @@ add_executable(VulkanTetris main.cpp
         engine/vk_command_buffer.h
         engine/vk_device.cpp
         engine/vk_device.h
+        engine/vk_buffer.cpp
+        engine/vk_buffer.h
 )
 
 
