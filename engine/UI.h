@@ -274,13 +274,15 @@ inline int ui_draw_rect_screen_size_percentage(UI_STATE* ui_state, glm::vec2 pos
 };
 
 
-inline void update_UI_on_resize(UI_DRAW_INFO& ui_draw_info)
+inline void update_UI_on_resize(UI_DRAW_INFO& ui_draw_info, Swapchain_Context& swapchain_context)
 {
-    //TODO: figure out how to change the size, maybe reconstruct all the ui's????
-    //but also keep all the initial size it was set with - I would have to do this anyway, if say i wanted to change the size at runtime without a window resize
+
+    //update screen percentage
+    ui_draw_info.push_constants.screenSize.x = swapchain_context.surface_capabilities.currentExtent.width;
+    ui_draw_info.push_constants.screenSize.y = swapchain_context.surface_capabilities.currentExtent.height;
+
 
     //iterate over all ui objects and recalculate their size values
-
 
     //so in theory, giving a position on where it should be on the screen is fucking terrible, cause it will 100 go off the screen on a resize
     //so a -1,1, device coordinate wouldn't actually be a bad idea, we just specify where relatively on the screen we want it
@@ -288,7 +290,7 @@ inline void update_UI_on_resize(UI_DRAW_INFO& ui_draw_info)
     ui_draw_info.vertex_info.dynamic_vertices.clear();
     ui_draw_info.vertex_info.dynamic_indices.clear();
 
-    for (auto ui_object: ui_draw_info.UI_Objects)
+    for (auto& ui_object: ui_draw_info.UI_Objects)
     {
         //so we specify what percent on the screen we want to start, and how big the elemenst are
         // 1920 * 1080    we want to position it at at 10% left, 10% down, then 10% wide and height
@@ -304,6 +306,11 @@ inline void update_UI_on_resize(UI_DRAW_INFO& ui_draw_info)
             (ui_draw_info.push_constants.screenSize.y * ui_object.screen_percentage.y) / 2
         };
 
+        //glm::vec2 converted_pos = pos / 100.0f;
+        //glm::vec2 converted_size = screen_percentage / 100.0f;
+
+        //ui_object.position = final_pos;
+        //ui_object.screen_percentage
 
         //std::vector<Vertex> new_quad = UI_create_quad(pos, screen_percentage, color);
         std::vector<Vertex> new_quad = UI_create_quad_screen_percentage(final_pos, final_size, ui_object.color);

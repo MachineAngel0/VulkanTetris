@@ -761,7 +761,7 @@ inline std::vector<Game_State*> init_play_game; // transition state into play ga
 inline std::vector<Game_State*> play_game;
 inline std::vector<Game_State*> game_over;
 
-inline void update_game_DOD(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_dynamic_info, float dt)
+inline void game_update_DOD(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_dynamic_info, float dt)
 {
 
     for (auto& game : start_game)

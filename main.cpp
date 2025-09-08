@@ -39,15 +39,10 @@ int main()
                 command_buffer_context, semaphore_fences_context);
     init_UI_vulkan(vulkan_context, swapchain_context, ui_graphics_context, graphics_context, command_buffer_context, ui_buffer_context, ui_state->draw_info);
 
-    //this has to be here because the ui state wont have the window size until vulkan inits itself with the window
+    //this has to be here because the ui state won't have the window size until vulkan init's with the window
     ui_draw_rect_screen_size_percentage(ui_state, glm::vec2{50,50}, glm::vec2{20,20}, glm::vec3{1.0,0.0,0.0});
 
     clock_windows_init();
-
-    //recreate_swapchain(vulkan_context, window_info, swapchain_context, graphics_context);
-
-    //TODO: this is here because of a ui bug that idk where its happening
-    //recreate_swapchain(vulkan_context, window_info, swapchain_context, graphics_context, ui_graphics_context, ui_state->draw_info);
 
     float dt = 0.0f; // in ms
     while (!glfwWindowShouldClose(window_info.window))
@@ -62,7 +57,7 @@ int main()
 
         ui_update(ui_state, window_info.window);
 
-        update_game_DOD(game_state, vertex_info, dt);
+        game_update_DOD(game_state, vertex_info, dt);
 
         draw_frame(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
                    buffer_context, vertex_info, semaphore_fences_context, ui_graphics_context, ui_buffer_context, ui_state->draw_info);

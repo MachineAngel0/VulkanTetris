@@ -171,6 +171,7 @@ void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain
 {
     //only the buffer context needs to be different
 
+    //get window size
     //vertex and index information
     //same renderpass
     //different graphics pipeline
@@ -665,9 +666,7 @@ void create_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapcha
     //VkSurfaceCapabilitiesKHR surface_capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vulkan_context.physical_device, vulkan_context.surface,
                                               &swapchain_context.surface_capabilities);
-    //TODO: UI
-    //ui_draw_info.push_constants.screenSize.x =  swapchain_context.surface_capabilities.currentExtent.width;
-    //ui_draw_info.push_constants.screenSize.y =  swapchain_context.surface_capabilities.currentExtent.height;
+
 
     //query for surface format
     uint32_t surface_format_count;
@@ -805,7 +804,7 @@ void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& win
     create_swapchain(vulkan_context, swapchain_context);
     create_image_views(vulkan_context, swapchain_context);
     create_frame_buffers(vulkan_context, swapchain_context, graphics_context);
-    //TODO: update_UI_on_resize(ui_draw_info);
+    update_UI_on_resize(ui_draw_info, swapchain_context);
 
 }
 
