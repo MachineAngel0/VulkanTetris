@@ -38,6 +38,12 @@ add_executable(VulkanTetris main.cpp
         engine/vk_device.h
         engine/vk_buffer.cpp
         engine/vk_buffer.h
+        engine/vk_vertex.cpp
+        engine/vk_vertex.h
+        engine/text.cpp
+        engine/text.h
+        lib/stb_impl.cpp
+        lib/stb_impl.h
 )
 
 
