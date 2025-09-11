@@ -3,7 +3,7 @@ project(VulkanTetris)
 
 set(CMAKE_CXX_STANDARD 20)
 
-#set(CMAKE_UNITY_BUILD TRUE) # UNITY BUILD
+set(CMAKE_UNITY_BUILD TRUE) # UNITY BUILD
 
 find_package(Vulkan	REQUIRED)
 
@@ -27,8 +27,6 @@ add_executable(VulkanTetris main.cpp
         engine/clock.h
         engine/UI.cpp
         engine/UI.h
-        engine/vk_renderpass.c
-        engine/vk_renderpass.h
         engine/texture.cpp
         engine/texture.h
         engine/vk_command_buffer.h
@@ -43,7 +41,10 @@ add_executable(VulkanTetris main.cpp
         engine/text.cpp
         engine/text.h
         lib/stb_impl.cpp
-        lib/stb_impl.h
+        engine/vk_descriptor.cpp
+        engine/vk_descriptor.h
+        engine/vk_renderpass.cpp
+        engine/vk_renderpass.h
 )
 
 

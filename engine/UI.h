@@ -12,7 +12,12 @@
 
 
 #define GLFW_INCLUDE_VULKAN
+#include <iostream>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+
+#include "vk_vertex.h"
+
 
 //IMMEDIATE MODE UI
 struct UI_Push_Constants

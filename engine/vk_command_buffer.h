@@ -3,24 +3,16 @@
 #ifndef COMMAND_BUFFER_H
 #define COMMAND_BUFFER_H
 
+#include <vector>
 #include <vulkan/vulkan.h>
-#include <vk_device.h>
+
+
+struct Vulkan_Context;
 
 struct Command_Buffer_Context
 {
-
-    //TODO: eveything above needs to be moved out, they are normal buffers not command buffers
-
     VkCommandPool command_pool;
     std::vector<VkCommandBuffer> command_buffer;
-
-
-    //TODO: move out from commmand buffer struct
-    VkImage texture_image;
-    VkDeviceMemory texture_image_memory;
-    VkImageView texture_image_view;
-    VkSampler texture_sampler;
-
 };
 
 /*COMMAND POOL*/

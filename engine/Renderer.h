@@ -1,27 +1,23 @@
 ﻿#ifndef VULKANFROMSPECS_H
 #define VULKANFROMSPECS_H
 
-#include <iostream>
 #include <optional>
 #include <vector>
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <array>
-#include <fstream>
 #include <string>
 
-#include <glm/glm.hpp>
-
-#include "vk_buffer.h"
-#include "vk_command_buffer.h"
-#include "vk_device.h"
-#include "vk_vertex.h"
 
 //#include "UI.h"
 
 
+struct Descriptor;
+struct Text_System;
+struct Command_Buffer_Context;
+struct Buffer_Context;
+struct Vulkan_Context;
 struct UI_DRAW_INFO;
 struct Game_State;
 struct VERTEX_DYNAMIC_INFO;
@@ -110,6 +106,10 @@ void init_vulkan(Vulkan_Context& vulkan_context,
 void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& ui_graphics_context,
                     Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info);
 
+void init_Text_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
+    Graphics_Context& text_graphics_context, Graphics_Context& graphics_context,
+    Command_Buffer_Context& command_buffer_context, Buffer_Context& text_buffer_context, Text_System& text_system);
+
 
 
 
@@ -185,13 +185,9 @@ void create_frame_buffers(Vulkan_Context& vulkan_context, Swapchain_Context& swa
 /*VERTEX BUFFER*/
 void create_vertex_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context);
 
-void create_buffer(Vulkan_Context& vulkan_context, VkDeviceSize size, VkBufferUsageFlags usage,
-                   VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
-void copy_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_index, VkBuffer srcBuffer,
-                 VkBuffer dstBuffer, VkDeviceSize size);
 
-uint32_t findMemoryType(Vulkan_Context& vulkan_context, uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
 
 /*INDEX BUFFER*/
 void create_index_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& buffer_context);
@@ -248,7 +244,8 @@ void copy_buffer_region(Vulkan_Context& vulkan_context, Command_Buffer_Context& 
 
 void create_ui_graphics_pipeline(Vulkan_Context& vulkan_context, Graphics_Context& ui_graphics_context, Graphics_Context&
                                  graphics_context_renderpass_only);
-
+void create_text_graphics_pipeline(Vulkan_Context& vulkan_context, Graphics_Context& text_graphics_context, Graphics_Context&
+                                   graphics_context_renderpass_only, Descriptor& descriptor);
 
 
 #endif //VULKANFROMSPECS_H

@@ -2,8 +2,11 @@
 #define MESH_H
 
 #include <vector>
-#include "Renderer.h"
+#include "glm/glm.hpp"
 
+
+struct VERTEX_DYNAMIC_INFO;
+struct Vertex;
 
 // Modified create_quad function to properly position quads
 std::vector<Vertex> create_quad(glm::vec2 pos, glm::vec3 color, float scale);

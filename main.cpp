@@ -1,10 +1,13 @@
 ﻿#include <iostream>
-#include <queue>
 
 #include "clock.h"
 #include "Tetris.h"
 #include "Renderer.h"
+#include "text.h"
 #include "UI.h"
+#include "vk_buffer.h"
+#include "vk_command_buffer.h"
+#include "vk_device.h"
 
 
 int main()
@@ -29,11 +32,7 @@ int main()
 
     Graphics_Context ui_graphics_context{};
     Buffer_Context ui_buffer_context{};
-    UI_STATE* ui_state = init_ui_state();
-    //ui_state->draw_info.push_constants.screenSize = {glm::vec2(800.0f,600.0f)};
-    //ui_draw_rect(glm::vec2{100.0,100.0}, glm::vec2{0.2f, 0.2f}, glm::vec3{0.0,1.0,0.0}, ui_state);
-    //ui_draw_rect(glm::vec2{0.0f,0.0f}, glm::vec2{300.0f, 300.0f}, glm::vec3{0.0,1.0,0.0}, ui_state);
-
+    UI_STATE* ui_state = init_ui_state(); // this will cause a crash if moved below the first init
 
     init_vulkan(vulkan_context, window_info, swapchain_context, graphics_context, buffer_context,
                 command_buffer_context, semaphore_fences_context);
@@ -42,6 +41,16 @@ int main()
     //this has to be here because the ui state won't have the window size until vulkan init's with the window
     ui_draw_rect_screen_size_percentage(ui_state, glm::vec2{50,50}, glm::vec2{20,20}, glm::vec3{1.0,0.0,0.0});
 
+    Text_System text_system{};
+    if (!load_font(text_system, "c:/windows/fonts/arialbd.ttf"))
+    {
+        throw std::runtime_error("Failed to load font");
+    };
+
+
+    Graphics_Context text_graphics_context{};
+    Buffer_Context text_buffer_context{};
+    init_Text_vulkan(vulkan_context, swapchain_context, text_graphics_context, graphics_context, command_buffer_context, text_buffer_context, text_system);
     clock_windows_init();
 
     float dt = 0.0f; // in ms
@@ -56,6 +65,8 @@ int main()
         key_callback(window_info.window, game_state, vertex_info);
 
         ui_update(ui_state, window_info.window);
+
+        //text_update(vulkan_context, command_buffer_context, text_buffer_context, text_system);
 
         game_update_DOD(game_state, vertex_info, dt);
 

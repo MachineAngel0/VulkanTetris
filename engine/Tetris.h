@@ -11,6 +11,7 @@
 
 #include "clock.h"
 #include "Mesh.h"
+#include "vk_vertex.h"
 
 
 //I need to be able to render multiple squares

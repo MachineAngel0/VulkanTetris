@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "Renderer.h"
+#include "vk_device.h"
 
 
 void command_pool_allocate(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
