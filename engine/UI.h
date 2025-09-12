@@ -186,7 +186,7 @@ inline int ui_draw_rect_screen_size_percentage(UI_STATE* ui_state, glm::vec2 pos
     //so we specify what percent on the screen we want to start, and how big the elemenst are
     // 1920 * 1080    we want to position it at at 10% left, 10% down, then 10% wide and height
 
-    //convert 100 -> 1
+    //convert 0-100 -> 0-1
     glm::vec2 converted_pos = pos / 100.0f;
     glm::vec2 converted_size = screen_percentage / 100.0f;
 

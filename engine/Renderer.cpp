@@ -2062,8 +2062,8 @@ typedef struct VkPipelineShaderStageCreateInfo {
     // VK_POLYGON_MODE_LINE for wireframes, VK_POLYGON_MODE_POINT for just points, using these require gpu features
     rasterizer.lineWidth = 1.0f;
     rasterizer.cullMode = VK_CULL_MODE_BACK_BIT; //discard back facing triangles
-    //rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    //rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 
     // counter means positive area is front facing, clockwise means negative area is front facing
     //MIGHT BE USEFUL FOR SHADOW MAPPING
