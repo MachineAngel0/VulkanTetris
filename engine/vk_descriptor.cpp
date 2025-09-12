@@ -202,13 +202,13 @@ void create_descriptor_sets_text(Vulkan_Context& vulkan_context, Texture& textur
 
         write_descriptor_sets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write_descriptor_sets[0].dstSet = descriptor.descriptor_sets[i];
-        write_descriptor_sets[0].dstBinding = 1;
+        write_descriptor_sets[0].dstBinding = 0;
         write_descriptor_sets[0].dstArrayElement = 0;
         write_descriptor_sets[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         write_descriptor_sets[0].descriptorCount = 1;
         write_descriptor_sets[0].pImageInfo = &imageInfo;
 
-        vkUpdateDescriptorSets(vulkan_context.logical_device, static_cast<uint32_t>(write_descriptor_sets.size()),
+        vkUpdateDescriptorSets(vulkan_context.logical_device, write_descriptor_sets.size(),
                                write_descriptor_sets.data(), 0, nullptr);
     }
 }

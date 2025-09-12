@@ -206,8 +206,6 @@ void text_system_init()
 
 bool load_font(Text_System& text_system, const char* filepath)
 {
-    unsigned char* ttf_buffer;
-
     // Load font file into memory
     //FOR TESTING: "c:/windows/fonts/arialbd.ttf"
     std::FILE* font_file = fopen(filepath, "rb");
@@ -216,7 +214,7 @@ bool load_font(Text_System& text_system, const char* filepath)
     size_t size = ftell(font_file);
     rewind(font_file);
 
-    ttf_buffer = (unsigned char*)malloc(size);
+    unsigned char* ttf_buffer = static_cast<unsigned char *>(malloc(size));
     fread(ttf_buffer, 1, size, font_file);
     fclose(font_file);
 
@@ -237,6 +235,8 @@ bool load_font(Text_System& text_system, const char* filepath)
             &text_system.font, 0, scale, c,
             &width, &height, &xoff, &yoff
         );
+
+        std::cout << "LOAD FONT " << width << " " << height << " " << xoff << " " << yoff << std::endl;
 
         // Advance metrics
         int advance, lsb;
@@ -287,7 +287,8 @@ void text_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command
     text_system.dynamic_indices.clear();
     text_system.dynamic_vertices.clear();
 
-    do_text(text_system, "HIHIHI");
+    //do_text(text_system, "HIHIHI");
+    do_text(text_system, "!");
 
     text_vertex_buffer_update(vulkan_context, command_buffer_context, buffer_context, text_system);
 

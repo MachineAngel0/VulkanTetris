@@ -54,8 +54,8 @@ void create_texture_image(Vulkan_Context& vulkan_context, Command_Buffer_Context
 
 
 
-void create_image(Vulkan_Context& vulkan_context, Texture texture, uint32_t width,
-    uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties)
+void create_image(Vulkan_Context& vulkan_context, Texture& texture, uint32_t width,
+                  uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties)
 {
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -190,17 +190,13 @@ void copyBufferToImage(Vulkan_Context& vulkan_context, Command_Buffer_Context& c
     command_buffer_end_single_use(vulkan_context, command_buffer_context.command_pool, commandBuffer);
 }
 
-void create_texture_image_views(Vulkan_Context& vulkan_context, Texture& texture)
-{
-    texture.texture_image_view = create_image_view(vulkan_context, texture.texture_image,
-                                                                  VK_FORMAT_R8G8B8A8_SRGB);
-}
 
-VkImageView create_image_view(Vulkan_Context& vulkan_context, VkImage image, VkFormat format)
+
+void create_texture_image_view(Vulkan_Context& vulkan_context, Texture& texture, VkFormat format)
 {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = image;
+    viewInfo.image = texture.texture_image;
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = format;
     viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -209,13 +205,16 @@ VkImageView create_image_view(Vulkan_Context& vulkan_context, VkImage image, VkF
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = 1;
 
-    VkImageView imageView;
-    if (vkCreateImageView(vulkan_context.logical_device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+    if (vkCreateImageView(vulkan_context.logical_device, &viewInfo, nullptr, &texture.texture_image_view) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create image view!");
     }
 
-    return imageView;
+    if (texture.texture_image_view == VK_NULL_HANDLE)
+    {
+        throw std::runtime_error("failed to create texture image view! NULL");
+    }
+
 }
 
 void create_texture_sampler(Vulkan_Context& vulkan_context, Texture& texture)
@@ -256,44 +255,48 @@ void create_texture_sampler(Vulkan_Context& vulkan_context, Texture& texture)
 }
 
 void create_texture_glyph(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context,
-    const unsigned char* bitmap, uint32_t width, uint32_t height)
+                          Texture& texture, const unsigned char* bitmap, uint32_t width, uint32_t height)
 {
 
-        Texture texture = {};
-        //text_system.glyph_textures[text_system.glyphs[glyph]] = texture;
-
-        VkDeviceSize imageSize = (VkDeviceSize)width * (VkDeviceSize)height * 1; // 4 stride rgba
-
-
-        //create a staging buffer
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        buffer_create(vulkan_context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
-                      stagingBufferMemory);
-
-        //allocate memory
-        void* data;
-        vkMapMemory(vulkan_context.logical_device, stagingBufferMemory, 0, imageSize, 0, &data);
-        memcpy(data, bitmap, static_cast<size_t>(imageSize));
-        vkUnmapMemory(vulkan_context.logical_device, stagingBufferMemory);
-
-        //create texture image
-        create_image(vulkan_context, texture, width, height, VK_FORMAT_R8G8B8A8_SRGB,
-                     VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-        transition_image_layout(vulkan_context, command_buffer_context, texture.texture_image,
-                                VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        copyBufferToImage(vulkan_context, command_buffer_context, stagingBuffer, texture.texture_image,
-                          static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-        transition_image_layout(vulkan_context, command_buffer_context, texture.texture_image,
-                                VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    //text_system.glyph_textures[text_system.glyphs[glyph]] = texture;
+    std::cout << "IMAGE SIZE: " << width << " " << height << '\n';
+    VkDeviceSize imageSize = width * height * 4; // 4 stride rgba
 
 
-        create_texture_image_views(vulkan_context, texture);
-        create_texture_sampler(vulkan_context, texture);
+    if (!bitmap)
+    {
+        throw std::runtime_error("NO BITMAPS AVAILABLE!");
+    }
+
+
+    //create a staging buffer
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    buffer_create(vulkan_context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
+                  stagingBufferMemory);
+
+    //allocate memory
+    void* data;
+    vkMapMemory(vulkan_context.logical_device, stagingBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, bitmap, static_cast<size_t>(imageSize));
+    vkUnmapMemory(vulkan_context.logical_device, stagingBufferMemory);
+
+    //create texture image
+    create_image(vulkan_context, texture, width, height, VK_FORMAT_R8G8B8A8_SRGB,
+                 VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    transition_image_layout(vulkan_context, command_buffer_context, texture.texture_image,
+                            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    copyBufferToImage(vulkan_context, command_buffer_context, stagingBuffer, texture.texture_image,
+                      width, height);
+    transition_image_layout(vulkan_context, command_buffer_context, texture.texture_image,
+                            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    create_texture_image_view(vulkan_context, texture, VK_FORMAT_R8G8B8A8_SRGB);
+    create_texture_sampler(vulkan_context, texture);
 
 
 }

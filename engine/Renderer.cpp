@@ -190,35 +190,44 @@ void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain
 }
 
 void init_Text_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
-    Graphics_Context& text_graphics_context, Graphics_Context& graphics_context,
-    Command_Buffer_Context& command_buffer_context, Buffer_Context& text_buffer_context, Text_System& text_system)
+                      Graphics_Context& text_graphics_context, Graphics_Context& graphics_context,
+                      Command_Buffer_Context& command_buffer_context, Buffer_Context& text_buffer_context,
+                      Text_System& text_system, Descriptor& text_descriptor)
 {
     create_text_vertex_buffer_new(vulkan_context, command_buffer_context, text_buffer_context);
     create_index_buffer_new(vulkan_context, command_buffer_context, text_buffer_context);
-    Descriptor text_descriptor;
     create_descriptor_set_layout_text(vulkan_context, text_descriptor);
     //graphics pipeline
     create_text_graphics_pipeline(vulkan_context, text_graphics_context, graphics_context, text_descriptor);
     //create textures for each glyph
     //descriptor pool, set, and layout
-    for (auto& glyph : text_system.glyphs)
-    {
-        create_texture_glyph(vulkan_context, command_buffer_context, glyph.bitmap, glyph.width, glyph.height);
+    /*
+    for (int c = 33; c < 128; c++) {
+        auto& current_glyph = text_system.glyphs[c - 32];
+        create_texture_glyph(vulkan_context, command_buffer_context, current_glyph.bitmap, current_glyph.width, current_glyph.height);
     }
+
+
     create_descriptor_pool_text(vulkan_context, text_descriptor);
-    for (auto& glyph_texture : text_system.glyph_textures)
-    {
-        create_descriptor_sets_text(vulkan_context, glyph_texture, text_descriptor);
-    }
+    for (int c = 33; c < 128; c++) {
+        auto& current_glyph_texture = text_system.glyph_textures[c - 32];
+        create_descriptor_sets_text(vulkan_context, current_glyph_texture, text_descriptor);
+    }*/
 
+    auto& current_glyph = text_system.glyphs['!' - 32];
+    auto& current_glyph_texture = text_system.glyph_textures['!' - 32];
+    create_texture_glyph(vulkan_context, command_buffer_context, current_glyph_texture, current_glyph.bitmap, current_glyph.width, current_glyph.height);
 
+    create_descriptor_pool_text(vulkan_context, text_descriptor);
+    create_descriptor_sets_text(vulkan_context, current_glyph_texture, text_descriptor);
 }
 
 
-void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
-                Swapchain_Context& swapchain_context,
+void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context, Swapchain_Context& swapchain_context,
                 Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context,
-                Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info, Semaphore_Fences_Context& semaphore_fences_info, Graphics_Context& ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info)
+                Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info, Semaphore_Fences_Context& semaphore_fences_info,
+                Graphics_Context& ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info,
+                Graphics_Context& text_graphics_context, Buffer_Context& text_buffer_context, Text_System& text_system, Descriptor& text_descriptor)
 {
 
     /*
@@ -274,7 +283,9 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
 
 
     //WORLD DRAW COMMAND
-    record_command_buffer(swapchain_context, command_buffer_context, graphics_context, buffer_context, vertex_info,image_index, semaphore_fences_info.currentFrame, ui_graphics_context, ui_buffer_context, ui_draw_info);
+    record_command_buffer(swapchain_context, command_buffer_context, graphics_context, buffer_context, vertex_info,image_index, semaphore_fences_info.currentFrame,
+        ui_graphics_context, ui_buffer_context, ui_draw_info,
+        text_graphics_context, text_buffer_context, text_system, text_descriptor);
 
     //UI DRAW COMMAND
     //ui_record_command_buffer(swapchain_context, ui_command_buffer_context, ui_graphics_context, ui_draw_info, image_index, semaphore_fences_info.currentFrame);
@@ -505,7 +516,10 @@ bool is_device_suitable(VkSurfaceKHR surface, VkPhysicalDevice physical_device_t
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
-    return queue_family_indices_is_complete(indices) && extensionsSupported && swapChainAdequate;
+    VkPhysicalDeviceFeatures supportedFeatures;
+    vkGetPhysicalDeviceFeatures(physical_device_to_query, &supportedFeatures);
+
+    return queue_family_indices_is_complete(indices) && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
 }
 
 
@@ -622,7 +636,7 @@ void create_logical_device(Vulkan_Context& vulkan_context)
     //void*p
     deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     //it replaces the old device features
-    //ex: deviceFeatures.features.samplerAnisotropy = VK_TRUE;
+    deviceFeatures.features.samplerAnisotropy = VK_TRUE;
 
 
     /*
@@ -1369,7 +1383,8 @@ void create_command_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Contex
 
 void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_Context& command_buffer_context,
                            Graphics_Context& graphics_context, Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info, uint32_t image_index, uint32_t current_frame, Graphics_Context
-                           &ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info)
+                           &ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info, Graphics_Context&
+                           text_graphics_context, Buffer_Context& text_buffer_context, Text_System& text_system, Descriptor& text_descriptor)
 {
     VkCommandBufferBeginInfo buffer_begin_info{};
     buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1479,6 +1494,38 @@ void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_
     vkCmdDrawIndexed(command_buffer_context.command_buffer[current_frame],
                          static_cast<uint32_t>(ui_draw_info.vertex_info.dynamic_indices.size()),
                          1, 0, 0, 0);
+
+    /***************************
+     * TEXt
+     **************************/
+
+    vkCmdBindPipeline(command_buffer_context.command_buffer[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                     text_graphics_context.graphics_pipeline);
+
+    //bind the vertex buffer
+    VkBuffer vk_buffer3 = {text_buffer_context.vertex_buffer};
+    VkDeviceSize text_offsets[] = {0};
+
+    vkCmdBindDescriptorSets(command_buffer_context.command_buffer[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, text_graphics_context.pipeline_layout, 0, 1, &text_descriptor.descriptor_sets[current_frame], 0, nullptr);
+
+    vkCmdBindVertexBuffers(command_buffer_context.command_buffer[current_frame], 0, 1, &vk_buffer3, text_offsets);
+
+    vkCmdBindIndexBuffer(command_buffer_context.command_buffer[current_frame], text_buffer_context.index_buffer,
+                         0, VK_INDEX_TYPE_UINT16);
+
+    /*
+    vkCmdPushConstants(command_buffer_context.command_buffer[current_frame],
+       ui_graphics_context.pipeline_layout,
+       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+       0,
+       sizeof(UI_Push_Constants),
+       &ui_draw_info.push_constants);*/
+
+
+    vkCmdDrawIndexed(command_buffer_context.command_buffer[current_frame],
+                         static_cast<uint32_t>(text_system.dynamic_indices.size()),
+                         1, 0, 0, 0);
+
 
 
     vkCmdEndRenderPass(command_buffer_context.command_buffer[current_frame]);

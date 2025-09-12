@@ -38,8 +38,10 @@ std::array<VkVertexInputAttributeDescription, 3> get_text_attribute_descriptions
 
 
 struct Glyph {
-    int width, height;
-    int xoff, yoff;
+    int width;
+    int height;
+    int xoff;
+    int yoff;
     float advance;
     unsigned char* bitmap; // 8-bit alpha bitmap
 };

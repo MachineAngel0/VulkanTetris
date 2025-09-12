@@ -7,6 +7,7 @@
 #include "UI.h"
 #include "vk_buffer.h"
 #include "vk_command_buffer.h"
+#include "vk_descriptor.h"
 #include "vk_device.h"
 
 
@@ -50,7 +51,8 @@ int main()
 
     Graphics_Context text_graphics_context{};
     Buffer_Context text_buffer_context{};
-    init_Text_vulkan(vulkan_context, swapchain_context, text_graphics_context, graphics_context, command_buffer_context, text_buffer_context, text_system);
+    Descriptor text_descriptor{};
+    init_Text_vulkan(vulkan_context, swapchain_context, text_graphics_context, graphics_context, command_buffer_context, text_buffer_context, text_system, text_descriptor);
     clock_windows_init();
 
     float dt = 0.0f; // in ms
@@ -66,12 +68,13 @@ int main()
 
         ui_update(ui_state, window_info.window);
 
-        //text_update(vulkan_context, command_buffer_context, text_buffer_context, text_system);
+        text_update(vulkan_context, command_buffer_context, text_buffer_context, text_system);
 
         game_update_DOD(game_state, vertex_info, dt);
 
         draw_frame(vulkan_context, window_info, swapchain_context, graphics_context, command_buffer_context,
-                   buffer_context, vertex_info, semaphore_fences_context, ui_graphics_context, ui_buffer_context, ui_state->draw_info);
+                   buffer_context, vertex_info, semaphore_fences_context, ui_graphics_context, ui_buffer_context, ui_state->draw_info,
+                   text_graphics_context, text_buffer_context, text_system, text_descriptor);
     }
 
     vkDeviceWaitIdle(vulkan_context.logical_device);
