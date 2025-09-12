@@ -12,6 +12,7 @@
 #include <glm/glm.hpp>
 #include "stb_truetype.h"
 #include "texture.h"
+#include "UI.h"
 
 
 struct Vulkan_Context;
@@ -51,7 +52,8 @@ struct Text_System
     stbtt_fontinfo font;
     Glyph glyphs[96];
     Texture glyph_textures[96];
-
+    //TODO:  it would be a good idea to make this more globally available or at least passed in, since the ui is also using this
+    Screen_Size_Push_Constants push_constants;
 
     std::vector<Vertex_Text> dynamic_vertices{};
     std::vector<uint16_t> dynamic_indices{};

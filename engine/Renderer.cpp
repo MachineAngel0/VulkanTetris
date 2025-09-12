@@ -1474,7 +1474,7 @@ void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_
        ui_graphics_context.pipeline_layout,
        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
        0,
-       sizeof(UI_Push_Constants),
+       sizeof(Screen_Size_Push_Constants),
        &ui_draw_info.push_constants);
 
     vkCmdBindVertexBuffers(command_buffer_context.command_buffer[current_frame], 0, 1, &vk_buffer2, ui_offsets);
@@ -1945,7 +1945,7 @@ typedef struct VkPipelineShaderStageCreateInfo {
     VkPushConstantRange push_constant_range{};
     push_constant_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     push_constant_range.offset = 0;
-    push_constant_range.size = sizeof(UI_Push_Constants);
+    push_constant_range.size = sizeof(Screen_Size_Push_Constants);
 
     //used to send info to the vertex/fragment shader, like in uniform buffers, to change shader behavior
     VkPipelineLayoutCreateInfo pipeline_layout_info{};
@@ -2080,8 +2080,8 @@ typedef struct VkPipelineShaderStageCreateInfo {
     // VK_POLYGON_MODE_LINE for wireframes, VK_POLYGON_MODE_POINT for just points, using these require gpu features
     rasterizer.lineWidth = 1.0f;
     rasterizer.cullMode = VK_CULL_MODE_BACK_BIT; //discard back facing triangles
-    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    //rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    //rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 
     // counter means positive area is front facing, clockwise means negative area is front facing
     //MIGHT BE USEFUL FOR SHADOW MAPPING

@@ -80,15 +80,27 @@ void do_text(Text_System& text_system, std::string text)
         float w = (float)g.width;
         float h = (float)g.height;
 
+        //TODO: temporary
+        w = 0.5f;
+        h = 0.5f;
+
         // UVs cover the whole glyph texture [0,1]
         glm::vec2 uv0(0.0f, 0.0f);
         glm::vec2 uv1(1.0f, 1.0f);
 
+        /*
         std::vector<Vertex_Text> new_quad = {
-            {{xpos,     ypos},     {1.0f,1.0f,1.0f}, {uv0.x, uv0.y}},
-            {{xpos,     ypos + h}, {1.0f,1.0f,1.0f}, {uv0.x, uv1.y}},
-            {{xpos + w, ypos + h}, {1.0f,1.0f,1.0f}, {uv1.x, uv1.y}},
-            {{xpos + w, ypos},     {1.0f,1.0f,1.0f}, {uv1.x, uv0.y}},
+            {{xpos,     ypos},     {1.0f,1.0f,0.0f}, {uv0.x, uv0.y}},
+            {{xpos,     ypos + h}, {1.0f,1.0f,0.0f}, {uv0.x, uv1.y}},
+            {{xpos + w, ypos + h}, {1.0f,1.0f,0.0f}, {uv1.x, uv1.y}},
+            {{xpos + w, ypos},     {1.0f,1.0f,0.0f}, {uv1.x, uv0.y}},
+        };
+        */
+        std::vector<Vertex_Text> new_quad = {
+            {{-0.5f, -0.5},     {1.0f,1.0f,0.0f}, {1.0f, 0.0f}},
+            {{0.5f, -0.5f}, {1.0f,1.0f,0.0f}, {0.0f, 0.0f}},
+            {{0.5f, 0.5f}, {1.0f,1.0f,0.0f}, {0.0f, 1.0f}},
+            {{-0.5f, 0.5f},     {1.0f,1.0f,0.0f}, {1.0f, 1.0f}},
         };
 
         /*

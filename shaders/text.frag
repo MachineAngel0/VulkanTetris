@@ -11,6 +11,6 @@ layout(location = 0) out vec4 outColor;
 void main() {
     //outColor = vec4(fragColor, 1.0);
     //outColor = vec4(fragTexCoord, 0.0, 1.0); // useful for debugging
-    outColor = texture(texSampler, fragTexCoord);
-    //outColor = vec4(fragColor, 1.0) * texture(texSampler, fragTexCoord); // if we want colors overlayed
+    //outColor = texture(texSampler, fragTexCoord);
+    outColor = vec4(fragColor, 1.0) * texture(texSampler, fragTexCoord); // if we want colors overlayed
 }

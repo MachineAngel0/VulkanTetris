@@ -20,7 +20,7 @@
 
 
 //IMMEDIATE MODE UI
-struct UI_Push_Constants
+struct Screen_Size_Push_Constants
 {
     //TODO: values are temporary for now
     glm::vec2 screenSize{800.0f, 600.0f};
@@ -45,7 +45,7 @@ struct UI_OBJECT
 struct UI_DRAW_INFO
 {
     VERTEX_DYNAMIC_INFO vertex_info;
-    UI_Push_Constants push_constants;
+    Screen_Size_Push_Constants push_constants;
     std::vector<UI_OBJECT> UI_Objects;
 };
 
@@ -345,7 +345,7 @@ inline void update_UI_on_resize(UI_DRAW_INFO& ui_draw_info, Swapchain_Context& s
 }
 
 
-inline bool region_hit(UI_Push_Constants push_constants, UI_OBJECT ui_object, glm::vec2 mouse_pos)
+inline bool region_hit(Screen_Size_Push_Constants push_constants, UI_OBJECT ui_object, glm::vec2 mouse_pos)
 {
     //check if we are inside a ui_object
 
