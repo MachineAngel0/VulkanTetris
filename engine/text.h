@@ -39,21 +39,19 @@ std::array<VkVertexInputAttributeDescription, 3> get_text_attribute_descriptions
 
 
 struct Glyph {
-    int width;
-    int height;
-    int xoff;
-    int yoff;
+    int width, height;
+    int xoff, yoff;
     float advance;
-    unsigned char* bitmap; // 8-bit alpha bitmap
+    float u0, v0, u1, v1; // UV coordinates in atlas
 };
 
 struct Text_System
 {
     stbtt_fontinfo font;
     Glyph glyphs[96];
-    Texture glyph_textures[96];
+    Texture font_texture;
     //TODO:  it would be a good idea to make this more globally available or at least passed in, since the ui is also using this
-    Screen_Size_Push_Constants push_constants;
+    Screen_Size_Push_Constants push_constants {glm::vec2{600.0f, 600.0f}}; // temporary for now until i send the push constants in the draw call
 
     std::vector<Vertex_Text> dynamic_vertices{};
     std::vector<uint16_t> dynamic_indices{};
@@ -62,10 +60,8 @@ struct Text_System
 
 void text_system_init();
 
-bool load_font(Text_System& text_system, const char* filepath);;
-
-//TODO: load into an atlus
-bool load_font_into_atlas(Text_System& text_system, const char* filepath);
+bool load_font(Text_System& text_system, const char* filepath, Vulkan_Context& vulkan_context, Command_Buffer_Context&
+               command_buffer_context);;
 
 
 std::vector<Vertex_Text> text_create_quad(glm::vec2 pos, glm::vec2 size, glm::vec3 color, glm::vec2 tex);

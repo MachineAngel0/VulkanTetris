@@ -66,49 +66,55 @@ void do_text(Text_System& text_system, std::string text)
 
     //std::vector<Vertex_Text> new_quad = text_create_quad({0.5f,0.5f}, {0.1f,0.1f}, {1.0f,1.0f,1.0f});
 
-    float x = 0.0f; // cursor position
-    float y = 0.0f;
+    float x = 10.0f; // cursor position
+    float y = 50.0f; //TODO: offset for now, will add in wanted location later
 
-    for (char c : text)
+    float screen_width = text_system.push_constants.screenSize.x;
+    float screen_height = text_system.push_constants.screenSize.y;
+
+    for (const char& c : text)
     {
+        if (c < 32 || c >= 128) continue; // skip unsupported characters
         Glyph& g = text_system.glyphs[c - 32];
-        Texture& tex = text_system.glyph_textures[c - 32];
+
+
 
         // Quad position in screen coords
         float xpos = x + g.xoff;
         float ypos = y - g.yoff;
-        float w = (float)g.width;
-        float h = (float)g.height;
+        float w = static_cast<float>(g.width);
+        float h = static_cast<float>(g.height);
 
-        //TODO: temporary
-        w = 0.5f;
-        h = 0.5f;
+        //printf("xpos %f, ypos%f, w%f, h%f\n", xpos, ypos, w, h);
 
-        // UVs cover the whole glyph texture [0,1]
-        glm::vec2 uv0(0.0f, 0.0f);
-        glm::vec2 uv1(1.0f, 1.0f);
+
+        // Convert screen coords to NDC [-1,1]
+        float ndc_x0 = (xpos / screen_width) * 2.0f - 1.0f;
+        float ndc_y0 = 1.0f - (ypos / screen_height) * 2.0f; // invert Y
+        float ndc_x1 = ((xpos + w) / screen_width) * 2.0f - 1.0f;
+        float ndc_y1 = 1.0f - ((ypos + h) / screen_height) * 2.0f;
+        // UVs from the atlas
+        glm::vec2 uv0(g.u0, g.v0);
+        glm::vec2 uv1(g.u1, g.v1);
+
+        //glm::vec2(xpos / text_system.push_constants.screenSize) * 2.0f - 1.0f;
 
         /*
         std::vector<Vertex_Text> new_quad = {
-            {{xpos,     ypos},     {1.0f,1.0f,0.0f}, {uv0.x, uv0.y}},
-            {{xpos,     ypos + h}, {1.0f,1.0f,0.0f}, {uv0.x, uv1.y}},
-            {{xpos + w, ypos + h}, {1.0f,1.0f,0.0f}, {uv1.x, uv1.y}},
-            {{xpos + w, ypos},     {1.0f,1.0f,0.0f}, {uv1.x, uv0.y}},
-        };
-        */
+            {{ndc_x0, ndc_y0}, {0.0f,1.0f,1.0f}, {uv0.x, uv0.y}},
+            {{ndc_x0, ndc_y1}, {1.0f,1.0f,0.0f}, {uv0.x, uv1.y}},
+            {{ndc_x1, ndc_y1}, {1.0f,0.0f,1.0f}, {uv1.x, uv1.y}},
+            {{ndc_x1, ndc_y0}, {1.0f,0.0f,0.0f}, {uv1.x, uv0.y}},
+        };*/
         std::vector<Vertex_Text> new_quad = {
-            {{-0.5f, -0.5},     {1.0f,1.0f,0.0f}, {1.0f, 0.0f}},
-            {{0.5f, -0.5f}, {1.0f,1.0f,0.0f}, {0.0f, 0.0f}},
-            {{0.5f, 0.5f}, {1.0f,1.0f,0.0f}, {0.0f, 1.0f}},
-            {{-0.5f, 0.5f},     {1.0f,1.0f,0.0f}, {1.0f, 1.0f}},
+            {{ndc_x0, ndc_y0}, {0.0f,1.0f,1.0f}, {uv0.x, uv0.y}},
+            {{ndc_x0, ndc_y1}, {1.0f,0.0f,1.0f}, {uv0.x, uv1.y}},
+            {{ndc_x1, ndc_y1}, {1.0f,1.0f,1.0f}, {uv1.x, uv1.y}},
+            {{ndc_x1, ndc_y0}, {1.0f,1.0f,0.0f}, {uv1.x, uv0.y}},
         };
 
-        /*
-        std::cout << "QUAD:" << new_quad[0].pos.x << new_quad[0].pos.y << '\n';
-        std::cout << "QUAD:" << new_quad[1].pos.x << new_quad[1].pos.y << '\n';
-        std::cout << "QUAD:" << new_quad[2].pos.x << new_quad[2].pos.y << '\n';
-        std::cout << "QUAD:" << new_quad[3].pos.x << new_quad[3].pos.y << '\n';
-        */
+
+
 
         uint16_t base_index = static_cast<uint16_t>(text_system.dynamic_vertices.size());
 
@@ -216,82 +222,152 @@ void text_system_init()
 {
 }
 
-bool load_font(Text_System& text_system, const char* filepath)
+bool load_font(Text_System& text_system, const char* filepath,
+               Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context)
 {
-    // Load font file into memory
-    //FOR TESTING: "c:/windows/fonts/arialbd.ttf"
+    // Load font file
     std::FILE* font_file = fopen(filepath, "rb");
-    if (!font_file){ return false;}
+    if (!font_file) {
+        printf("Failed to open font file: %s\n", filepath);
+        return false;
+    }
+
     fseek(font_file, 0, SEEK_END);
     size_t size = ftell(font_file);
     rewind(font_file);
 
-    unsigned char* ttf_buffer = static_cast<unsigned char *>(malloc(size));
+    unsigned char* ttf_buffer = static_cast<unsigned char*>(malloc(size));
     fread(ttf_buffer, 1, size, font_file);
     fclose(font_file);
 
     // Initialize stb_truetype
-    if (!stbtt_InitFont(&text_system.font, ttf_buffer, stbtt_GetFontOffsetForIndex(ttf_buffer, 0)))
-    {
+    if (!stbtt_InitFont(&text_system.font, ttf_buffer, stbtt_GetFontOffsetForIndex(ttf_buffer, 0))) {
+        printf("Failed to initialize font\n");
+        free(ttf_buffer);
         return false;
-    };
+    }
 
-    //get size and then generate bitmap
-    float scale = stbtt_ScaleForPixelHeight(&text_system.font, 48.0f); // 48px font size
+    // Generate bitmap atlas
+    float scale = stbtt_ScaleForPixelHeight(&text_system.font, 48.0f);
+    int atlasWidth = 1024;
+    int atlasHeight = 1024;
+    std::vector<unsigned char> atlasPixels(atlasWidth * atlasHeight, 0);
+
+    int x = 0, y = 0, rowHeight = 0;
+
+    // Get font metrics for baseline calculation
+    int ascent, descent, lineGap;
+    stbtt_GetFontVMetrics(&text_system.font, &ascent, &descent, &lineGap);
+    float baseline = ascent * scale;
 
     for (int c = 32; c < 128; c++) {
         int width, height, xoff, yoff;
+        unsigned char* bitmap = stbtt_GetCodepointBitmap(&text_system.font, 0, scale, c,
+                                                         &width, &height, &xoff, &yoff);
 
-        // Rasterize this glyph
-        unsigned char* bitmap = stbtt_GetCodepointBitmap(
-            &text_system.font, 0, scale, c,
-            &width, &height, &xoff, &yoff
-        );
+        if (!bitmap) continue; // Skip if no bitmap (e.g., space character)
 
-        std::cout << "LOAD FONT " << width << " " << height << " " << xoff << " " << yoff << std::endl;
+        // Handle atlas overflow
+        if (x + width > atlasWidth) {
+            x = 0;
+            y += rowHeight;
+            rowHeight = 0;
+        }
 
-        // Advance metrics
+        if (y + height > atlasHeight) {
+            printf("Error: Texture atlas too small!\n");
+            stbtt_FreeBitmap(bitmap, nullptr);
+            free(ttf_buffer);
+            return false;
+        }
+
+        // Copy glyph bitmap into atlas
+        for (int row = 0; row < height; row++) {
+            memcpy(&atlasPixels[(y + row) * atlasWidth + x],
+                   &bitmap[row * width], width);
+        }
+
+        // Store glyph metrics
+        Glyph& g = text_system.glyphs[c - 32];
+        g.width = width;
+        g.height = height;
+        g.xoff = xoff;
+        g.yoff = baseline + yoff; // Adjust for baseline
+
         int advance, lsb;
         stbtt_GetCodepointHMetrics(&text_system.font, c, &advance, &lsb);
+        g.advance = advance * scale;
 
-        text_system.glyphs[c - 32].width   = width;
-        text_system.glyphs[c - 32].height  = height;
-        text_system.glyphs[c - 32].xoff    = xoff;
-        text_system.glyphs[c - 32].yoff    = yoff;
-        text_system.glyphs[c - 32].advance = advance * scale;
-        text_system.glyphs[c - 32].bitmap  = bitmap;
+        // Calculate UV coordinates
+        g.u0 = float(x) / atlasWidth;
+        g.v0 = float(y) / atlasHeight;
+        g.u1 = float(x + width) / atlasWidth;
+        g.v1 = float(y + height) / atlasHeight;
 
-        printf("Generated glyph '%c' (%dx%d)\n", c, width, height);
+        printf("Glyph '%c': size=(%d,%d), offset=(%d,%.1f), advance=%.1f, UV=(%.3f,%.3f)-(%.3f,%.3f)\n",
+               c, width, height, xoff, g.yoff, g.advance, g.u0, g.v0, g.u1, g.v1);
+
+        x += width + 1; // Add 1 pixel padding
+        if (height > rowHeight) rowHeight = height + 1;
+
+        stbtt_FreeBitmap(bitmap, nullptr);
     }
-
-
-    /*
-    // Example: save one glyph bitmap for debugging
-    // stored in cmake-build-debug
-    FILE* out = fopen("glyph_A.pgm", "wb");
-    fprintf(out, "P5\n%d %d\n255\n", text_system.glyphs['A' - 32].width, text_system.glyphs['A' - 32].height);
-    fwrite(text_system.glyphs['A' - 32].bitmap, 1,
-           text_system.glyphs['A' - 32].width * text_system.glyphs['A' - 32].height,
-           out);
-    fclose(out);
-    */
-
-    /* we dont do this cause, we need the info for the textures
-    // Free all glyph bitmaps when done
-    for (int i = 0; i < 96; i++) {
-        stbtt_FreeBitmap(text_system.glyphs[i].bitmap, NULL);
-    }*/
 
     free(ttf_buffer);
 
+    // Convert to RGBA
+    std::vector<unsigned char> atlasRGBA(atlasWidth * atlasHeight * 4);
+    for (int i = 0; i < atlasWidth * atlasHeight; i++) {
+        unsigned char v = atlasPixels[i];
+        atlasRGBA[i * 4 + 0] = 255; // R
+        atlasRGBA[i * 4 + 1] = 255; // G
+        atlasRGBA[i * 4 + 2] = 255; // B
+        atlasRGBA[i * 4 + 3] = v;   // A (alpha from glyph)
+    }
 
+    // Save atlas to file for debugging, will be under cmake-build-debug
+    std::string debug_filename = "font_atlas_debug.ppm";
+    std::FILE* debug_file = fopen(debug_filename.c_str(), "wb");
+    if (debug_file) {
+        // Write PPM header (P6 format for RGB)
+        fprintf(debug_file, "P6\n%d %d\n255\n", atlasWidth, atlasHeight);
+
+        // Write RGB data (skip alpha channel for PPM format)
+        for (int i = 0; i < atlasWidth * atlasHeight; i++) {
+            unsigned char r = atlasRGBA[i * 4 + 0];
+            unsigned char g = atlasRGBA[i * 4 + 1];
+            unsigned char b = atlasRGBA[i * 4 + 2];
+            // For text debugging, use alpha as grayscale
+            unsigned char alpha = atlasRGBA[i * 4 + 3];
+            fwrite(&alpha, 1, 1, debug_file); // R
+            fwrite(&alpha, 1, 1, debug_file); // G
+            fwrite(&alpha, 1, 1, debug_file); // B
+        }
+        fclose(debug_file);
+        printf("Font atlas saved to: %s\n", debug_filename.c_str());
+    } else {
+        printf("Warning: Could not save font atlas debug file\n");
+    }
+
+    // Also save as raw RGBA data
+    std::string raw_filename = "font_atlas_debug.raw";
+    std::FILE* raw_file = fopen(raw_filename.c_str(), "wb");
+    if (raw_file) {
+        fwrite(atlasRGBA.data(), 1, atlasRGBA.size(), raw_file);
+        fclose(raw_file);
+        printf("Raw RGBA atlas data saved to: %s (%dx%d RGBA)\n",
+               raw_filename.c_str(), atlasWidth, atlasHeight);
+    }
+
+    // Upload to Vulkan texture
+    text_system.font_texture = {};
+    create_texture_glyph(vulkan_context, command_buffer_context, text_system.font_texture,
+                        atlasRGBA.data(), atlasWidth, atlasHeight);
+
+    printf("Font loaded successfully: %s\n", filepath);
     return true;
 }
 
-bool load_font_into_atlas(Text_System& text_system, const char* filepath)
-{
-    return true;
-}
 
 void text_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context,
     Buffer_Context& buffer_context, Text_System& text_system)
@@ -299,8 +375,7 @@ void text_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command
     text_system.dynamic_indices.clear();
     text_system.dynamic_vertices.clear();
 
-    //do_text(text_system, "HIHIHI");
-    do_text(text_system, "!");
+    do_text(text_system, "HELLO WORLD!");
 
     text_vertex_buffer_update(vulkan_context, command_buffer_context, buffer_context, text_system);
 

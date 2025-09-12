@@ -32,7 +32,7 @@ void create_texture_sampler(Vulkan_Context& vulkan_context, Texture& texture);
 
 
 /*FOR TEXT*/
-void create_texture_glyph(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Texture& texture, const unsigned char* bitmap, uint32_t width, uint32_t height);
+void create_texture_glyph(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context, Texture& texture, const unsigned char* pixel_data, uint32_t width, uint32_t height);
 
 #endif //TEXTURE_H
 

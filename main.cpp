@@ -43,7 +43,7 @@ int main()
     ui_draw_rect_screen_size_percentage(ui_state, glm::vec2{50,50}, glm::vec2{20,20}, glm::vec3{1.0,0.0,0.0});
 
     Text_System text_system{};
-    if (!load_font(text_system, "c:/windows/fonts/arialbd.ttf"))
+    if (!load_font(text_system, "c:/windows/fonts/arialbd.ttf", vulkan_context, command_buffer_context))
     {
         throw std::runtime_error("Failed to load font");
     };

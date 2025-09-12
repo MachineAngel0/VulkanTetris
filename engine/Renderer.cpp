@@ -199,27 +199,9 @@ void init_Text_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapcha
     create_descriptor_set_layout_text(vulkan_context, text_descriptor);
     //graphics pipeline
     create_text_graphics_pipeline(vulkan_context, text_graphics_context, graphics_context, text_descriptor);
-    //create textures for each glyph
-    //descriptor pool, set, and layout
-    /*
-    for (int c = 33; c < 128; c++) {
-        auto& current_glyph = text_system.glyphs[c - 32];
-        create_texture_glyph(vulkan_context, command_buffer_context, current_glyph.bitmap, current_glyph.width, current_glyph.height);
-    }
-
 
     create_descriptor_pool_text(vulkan_context, text_descriptor);
-    for (int c = 33; c < 128; c++) {
-        auto& current_glyph_texture = text_system.glyph_textures[c - 32];
-        create_descriptor_sets_text(vulkan_context, current_glyph_texture, text_descriptor);
-    }*/
-
-    auto& current_glyph = text_system.glyphs['!' - 32];
-    auto& current_glyph_texture = text_system.glyph_textures['!' - 32];
-    create_texture_glyph(vulkan_context, command_buffer_context, current_glyph_texture, current_glyph.bitmap, current_glyph.width, current_glyph.height);
-
-    create_descriptor_pool_text(vulkan_context, text_descriptor);
-    create_descriptor_sets_text(vulkan_context, current_glyph_texture, text_descriptor);
+    create_descriptor_sets_text(vulkan_context, text_system.font_texture, text_descriptor);
 }
 
 
@@ -2119,18 +2101,42 @@ typedef struct VkPipelineShaderStageCreateInfo {
     finalColor = finalColor & colorWriteMask;
      */
 
-    //TODO: I should look more into this later, its kinda like photoshop blend modes
-    // the most important is the src and dst
+
+
+    //NOTE: it's kinda like photoshop blend modes
+    //blending happens before its passed to the fragment shader
+    //When we consider blending two colors, we can call the color already in place the destination
+    //and the new color we want to blend with it the source.
+
+    //Enable alpha blending for text rendering
+
+    //best to think about blending with this function:
+    // blend(source,destination)=(source⋅sourceBlendFactor)blendFunction(dest⋅destinationBlendFactor)
+
+    //classic “alpha blending” (also called “source-over” compositing).
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
-                                          | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
-    //colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    //colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    //colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
-    //colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    //colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    //colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_TRUE; // ENABLE BLENDING
+
+    /*
+    // Standard alpha blending: src_alpha * src_color + (1 - src_alpha) * dst_color
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+    */
+
+    // Premultiplied alpha blending, will make the text less blurrier in motion
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+    // A_out = A_src + (1 - A_src) * A_dst
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
     VkPipelineColorBlendStateCreateInfo color_blending{};
     color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;

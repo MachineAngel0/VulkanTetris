@@ -13,4 +13,11 @@ void main() {
     //outColor = vec4(fragTexCoord, 0.0, 1.0); // useful for debugging
     //outColor = texture(texSampler, fragTexCoord);
     outColor = vec4(fragColor, 1.0) * texture(texSampler, fragTexCoord); // if we want colors overlayed
+
+    //creates greyish outline, but looks bad
+    //vec4 texel = texture(texSampler, fragTexCoord);      // sample atlas RGBA
+    //float alpha = texel.a;                               // use alpha channel
+    //vec3 rgb   = fragColor * alpha;                      // premultiply tint
+    //outColor   = vec4(rgb, alpha);
+
 }

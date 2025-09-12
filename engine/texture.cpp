@@ -2,7 +2,6 @@
 #include <stb_image.h>
 #include <stdexcept>
 
-#include "text.h"
 #include "vk_buffer.h"
 #include "vk_command_buffer.h"
 #include "vk_device.h"
@@ -255,7 +254,7 @@ void create_texture_sampler(Vulkan_Context& vulkan_context, Texture& texture)
 }
 
 void create_texture_glyph(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context,
-                          Texture& texture, const unsigned char* bitmap, uint32_t width, uint32_t height)
+                          Texture& texture, const unsigned char* pixel_data, uint32_t width, uint32_t height)
 {
 
     //text_system.glyph_textures[text_system.glyphs[glyph]] = texture;
@@ -263,7 +262,7 @@ void create_texture_glyph(Vulkan_Context& vulkan_context, Command_Buffer_Context
     VkDeviceSize imageSize = width * height * 4; // 4 stride rgba
 
 
-    if (!bitmap)
+    if (!pixel_data)
     {
         throw std::runtime_error("NO BITMAPS AVAILABLE!");
     }
@@ -279,7 +278,7 @@ void create_texture_glyph(Vulkan_Context& vulkan_context, Command_Buffer_Context
     //allocate memory
     void* data;
     vkMapMemory(vulkan_context.logical_device, stagingBufferMemory, 0, imageSize, 0, &data);
-    memcpy(data, bitmap, static_cast<size_t>(imageSize));
+    memcpy(data, pixel_data, imageSize);
     vkUnmapMemory(vulkan_context.logical_device, stagingBufferMemory);
 
     //create texture image
