@@ -14,6 +14,7 @@
 int main()
 {
 
+
     Vulkan_Context vulkan_context{};
     GLFW_Window_Context window_info{};
     Swapchain_Context swapchain_context{};
@@ -40,7 +41,7 @@ int main()
     init_UI_vulkan(vulkan_context, swapchain_context, ui_graphics_context, graphics_context, command_buffer_context, ui_buffer_context, ui_state->draw_info);
 
     //this has to be here because the ui state won't have the window size until vulkan init's with the window
-    ui_draw_rect_screen_size_percentage(ui_state, glm::vec2{50,50}, glm::vec2{20,20}, glm::vec3{1.0,0.0,0.0});
+    ui_draw_button_rect_screen_size_percentage(ui_state, glm::vec2{50,50}, glm::vec2{20,20}, glm::vec3{1.0,0.0,0.0}, glm::vec3{0.0,0.0,1.0}, glm::vec3{0.0,1.0,0.0});
 
     Text_System text_system{};
     if (!load_font(text_system, "c:/windows/fonts/arialbd.ttf", vulkan_context, command_buffer_context))

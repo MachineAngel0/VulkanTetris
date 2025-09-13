@@ -11,6 +11,7 @@
 
 #include "clock.h"
 #include "Mesh.h"
+#include "UI.h"
 #include "vk_vertex.h"
 
 
@@ -762,12 +763,14 @@ inline std::vector<Game_State*> init_play_game; // transition state into play ga
 inline std::vector<Game_State*> play_game;
 inline std::vector<Game_State*> game_over;
 
-inline void game_update_DOD(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_dynamic_info, float dt)
+inline void game_update_DOD(Game_State* game_state, UI_STATE* ui_state, VERTEX_DYNAMIC_INFO& vertex_dynamic_info, float dt)
 {
 
     for (auto& game : start_game)
     {
         //Our start screen
+        ui_draw_button_rect_screen_size_percentage(ui_state, glm::vec2{50,50}, glm::vec2{20,20}, glm::vec3{1.0,0.0,0.0}, glm::vec3{0.0,0.0,1.0}, glm::vec3{0.0,1.0,0.0});
+
     };
     for (auto& game : init_play_game)
     {

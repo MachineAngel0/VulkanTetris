@@ -165,7 +165,7 @@ void do_text_screen_percentage(Text_System& text_system, std::string text, glm::
     //tells us how much of the screen we want based on the size percentage
     if (screen_percentage_size.x > 100 || screen_percentage_size.x < 0 || screen_percentage_size.y > 100 || screen_percentage_size.y < 0)
     {
-        printf("YOU ARE STUPID: TEXT" + __LINE__);
+        printf("YOU ARE STUPID: TEXT");
     }
     if (pos.x > 100 || pos.x < 0 || pos.y > 100 || pos.y < 0)
     {
@@ -232,11 +232,11 @@ void do_text_screen_percentage(Text_System& text_system, std::string text, glm::
         {{pos.x + size.x, pos.y + size.y}, {color}},
         {{pos.x + size.x, pos.y - size.y}, {color}}
         */
+
         // UVs from the atlas
         glm::vec2 uv0(g.u0, g.v0);
         glm::vec2 uv1(g.u1, g.v1);
 
-        //glm::vec2(xpos / text_system.push_constants.screenSize) * 2.0f - 1.0f;
 
         std::vector<Vertex_Text> new_quad = {
             {{ndc_x0, ndc_y0}, color, {uv0.x, uv0.y}},
@@ -255,22 +255,23 @@ void do_text_screen_percentage(Text_System& text_system, std::string text, glm::
 
 
         //black outline behind the intended text we wish to render
+        //it might not actually be possible using this texture method, It would be better to use signed distance fields
         if (use_outline)
         {
 
             //scales the texture
             //TODO: rn it scales from the top left and then out, but i want it to scale from the center
-            float outline_scalar = 1.2f;
+            //TODO: it scales from the center but it still looks wrong
+            float outline_scalar = 1.1f;
             float outline_w = static_cast<float>(g.width) * font_scalar * outline_scalar;
-            float outline_h = static_cast<float>(g.height) * font_scalar * outline_scalar;
+            float outline_h = static_cast<float>(g.height) * font_scalar * (outline_scalar);
 
             //printf("xpos %f, ypos%f, w%f, h%f\n", xpos, ypos, w, h);
 
             //get the center of the quad/text
             float center_x = xpos + 0.5f * w;
             float center_y = ypos + 0.5f * h;
-            float xpos = (final_pos.x - final_size.x + g.xoff);
-            float ypos = (final_pos.y  + g.yoff);
+
             //ive already made the quad, so i can overwrite the size here
             // Convert screen coords to NDC [-1,1]
             //the idea is that instead of the normal position we take the cetner and then offset it

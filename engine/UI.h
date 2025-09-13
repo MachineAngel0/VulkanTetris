@@ -6,7 +6,6 @@
 #define UI_H
 
 #include "Renderer.h"
-
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
@@ -34,12 +33,15 @@ struct UIID
 };
 
 //TODO: update to SOA
+//TODO: this really should be called a button, as there are other types of ui's
 struct UI_OBJECT
 {
     UIID id;
     glm::vec2 position;
     glm::vec2 screen_percentage;
     glm::vec3 color;
+    glm::vec3 hover_color;
+    glm::vec3 pressed_color;
 };
 
 struct UI_DRAW_INFO
@@ -164,7 +166,8 @@ inline int ui_draw_rect(glm::vec2 pos, glm::vec2 size, glm::vec3 color, UI_STATE
 };
 
 
-inline int ui_draw_rect_screen_size_percentage(UI_STATE* ui_state, glm::vec2 pos, glm::vec2 screen_percentage, glm::vec3 color)
+inline int ui_draw_button_rect_screen_size_percentage(UI_STATE* ui_state, glm::vec2 pos, glm::vec2 screen_percentage, glm::vec3 color = {1.0f,1.0f,1.0f}, glm::vec3 hovered_color = {1.0f,1.0f,1.0f}, glm::vec3
+                                                      pressed_color = {1.0f,1.0f,1.0f})
 {
     //TODO: so rn its based on the topleft corner, but i want to expand the object from the center of where i put it not from top left
 
@@ -268,7 +271,7 @@ inline int ui_draw_rect_screen_size_percentage(UI_STATE* ui_state, glm::vec2 pos
 
     ui_state->draw_info.vertex_info.vertex_buffer_should_update = true;
 
-    UI_OBJECT new_ui_object = {{ui_state->draw_info.vertex_info.mesh_id, 0}, converted_pos, converted_size, color};
+    UI_OBJECT new_ui_object = {{ui_state->draw_info.vertex_info.mesh_id, 0}, converted_pos, converted_size, color, hovered_color, pressed_color};
 
     //increment id
     ui_state->draw_info.vertex_info.mesh_id++;
@@ -391,7 +394,7 @@ bool button(UI_STATE& ui_state, int id, int x, int y)
 }*/
 
 //check if we can use the button
-inline bool do_button(UI_STATE* ui_state, UI_OBJECT ui_object)
+inline bool do_button(UI_STATE* ui_state, const UI_OBJECT& ui_object)
 {
     //checking if we released the button and we are inside the hit region
     if (ui_state->mouse_down == 0 &&
@@ -435,7 +438,7 @@ inline void ui_update(UI_STATE* ui_state, GLFWwindow* window)
         {
             for (int i = ui_object.id.ID * 4; i < ui_object.id.ID + 4; i++)
             {
-                ui_state->draw_info.vertex_info.dynamic_vertices[i].color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+                ui_state->draw_info.vertex_info.dynamic_vertices[i].color = ui_object.pressed_color;
             }
         }
         //hot state
@@ -443,7 +446,7 @@ inline void ui_update(UI_STATE* ui_state, GLFWwindow* window)
         {
             for (int i = ui_object.id.ID * 4; i < ui_object.id.ID + 4; i++)
             {
-                ui_state->draw_info.vertex_info.dynamic_vertices[i].color = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+                ui_state->draw_info.vertex_info.dynamic_vertices[i].color = ui_object.hover_color;
             }
         }
         // normal state
@@ -451,7 +454,7 @@ inline void ui_update(UI_STATE* ui_state, GLFWwindow* window)
         {
             for (int i = ui_object.id.ID * 4; i < ui_object.id.ID + 4; i++)
             {
-                ui_state->draw_info.vertex_info.dynamic_vertices[i].color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+                ui_state->draw_info.vertex_info.dynamic_vertices[i].color = ui_object.color;
             }
         }
 
