@@ -172,7 +172,7 @@ void init_vulkan(Vulkan_Context& vulkan_context,
 
 
 void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& ui_graphics_context,
-                    Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info)
+                    Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& ui_buffer_context, UI_STATE* ui_state)
 {
     //only the buffer context needs to be different
 
@@ -181,8 +181,8 @@ void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain
     //same renderpass
     //different graphics pipeline
 
-    ui_draw_info.push_constants.screenSize.x =  swapchain_context.surface_capabilities.currentExtent.width;
-    ui_draw_info.push_constants.screenSize.y =  swapchain_context.surface_capabilities.currentExtent.height;
+    ui_state->push_constants.screenSize.x =  swapchain_context.surface_capabilities.currentExtent.width;
+    ui_state->push_constants.screenSize.y =  swapchain_context.surface_capabilities.currentExtent.height;
 
     create_vertex_buffer_new(vulkan_context, command_buffer_context, ui_buffer_context);
     create_index_buffer_new(vulkan_context, command_buffer_context, ui_buffer_context);
@@ -208,8 +208,8 @@ void init_Text_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapcha
 void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context, Swapchain_Context& swapchain_context,
                 Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context,
                 Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info, Semaphore_Fences_Context& semaphore_fences_info,
-                Graphics_Context& ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info,
-                Graphics_Context& text_graphics_context, Buffer_Context& text_buffer_context, Text_System& text_system, Descriptor& text_descriptor)
+                Graphics_Context& ui_graphics_context, Buffer_Context& ui_buffer_context, UI_STATE* ui_state,
+                Graphics_Context& text_graphics_context, Buffer_Context& text_buffer_context, Descriptor& text_descriptor)
 {
 
     /*
@@ -239,7 +239,7 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
     /*Checking if our window got resized*/
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context, ui_draw_info);
+        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context, ui_state);
         return;
     }
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
@@ -256,7 +256,10 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
     update_vertex_buffer_update(vulkan_context, command_buffer_context, buffer_context, vertex_info);
 
     //UI
-    update_vertex_buffer_update(vulkan_context, command_buffer_context, ui_buffer_context, ui_draw_info.vertex_info);
+    update_vertex_buffer_update(vulkan_context, command_buffer_context, ui_buffer_context, ui_state->draw_info.vertex_info);
+
+    //TEXT
+    text_vertex_buffer_update(vulkan_context, command_buffer_context, text_buffer_context, ui_state->text_system);
 
     /* Record a command buffer which draws the scene onto that image */
 
@@ -266,8 +269,8 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
 
     //WORLD DRAW COMMAND
     record_command_buffer(swapchain_context, command_buffer_context, graphics_context, buffer_context, vertex_info,image_index, semaphore_fences_info.currentFrame,
-        ui_graphics_context, ui_buffer_context, ui_draw_info,
-        text_graphics_context, text_buffer_context, text_system, text_descriptor);
+        ui_graphics_context, ui_buffer_context, ui_state,
+        text_graphics_context, text_buffer_context, text_descriptor);
 
     //UI DRAW COMMAND
     //ui_record_command_buffer(swapchain_context, ui_command_buffer_context, ui_graphics_context, ui_draw_info, image_index, semaphore_fences_info.currentFrame);
@@ -325,7 +328,7 @@ void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_cont
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || window_context.framebufferResized)
     {
         window_context.framebufferResized = false;
-        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context, ui_draw_info);
+        recreate_swapchain(vulkan_context, window_context, swapchain_context, graphics_context, ui_state);
     }
     else if (result != VK_SUCCESS)
     {
@@ -813,7 +816,7 @@ VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& presen
 }
 
 void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
-                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context, UI_DRAW_INFO& ui_draw_info)
+                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context, UI_STATE* ui_state)
 {
     //have the device wait while the screen gets recreated
     int width = 0, height = 0;
@@ -831,7 +834,7 @@ void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& win
     create_swapchain(vulkan_context, swapchain_context);
     create_image_views(vulkan_context, swapchain_context);
     create_frame_buffers(vulkan_context, swapchain_context, graphics_context);
-    update_UI_on_resize(ui_draw_info, swapchain_context);
+    update_UI_on_resize(ui_state, swapchain_context.surface_capabilities.currentExtent.width, swapchain_context.surface_capabilities.currentExtent.height);
 
 }
 
@@ -1365,8 +1368,8 @@ void create_command_buffer(Vulkan_Context& vulkan_context, Command_Buffer_Contex
 
 void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_Context& command_buffer_context,
                            Graphics_Context& graphics_context, Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info, uint32_t image_index, uint32_t current_frame, Graphics_Context
-                           &ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info, Graphics_Context&
-                           text_graphics_context, Buffer_Context& text_buffer_context, Text_System& text_system, Descriptor& text_descriptor)
+                           &ui_graphics_context, Buffer_Context& ui_buffer_context, UI_STATE* ui_state, Graphics_Context&
+                           text_graphics_context, Buffer_Context& text_buffer_context, Descriptor& text_descriptor)
 {
     VkCommandBufferBeginInfo buffer_begin_info{};
     buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1457,7 +1460,7 @@ void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_
        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
        0,
        sizeof(Screen_Size_Push_Constants),
-       &ui_draw_info.push_constants);
+       &ui_state->push_constants);
 
     vkCmdBindVertexBuffers(command_buffer_context.command_buffer[current_frame], 0, 1, &vk_buffer2, ui_offsets);
 
@@ -1474,7 +1477,7 @@ void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_
 
 
     vkCmdDrawIndexed(command_buffer_context.command_buffer[current_frame],
-                         static_cast<uint32_t>(ui_draw_info.vertex_info.dynamic_indices.size()),
+                         static_cast<uint32_t>(ui_state->draw_info.vertex_info.dynamic_indices.size()),
                          1, 0, 0, 0);
 
     /***************************
@@ -1505,7 +1508,7 @@ void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_
 
 
     vkCmdDrawIndexed(command_buffer_context.command_buffer[current_frame],
-                         static_cast<uint32_t>(text_system.dynamic_indices.size()),
+                         static_cast<uint32_t>(ui_state->text_system.dynamic_indices.size()),
                          1, 0, 0, 0);
 
 

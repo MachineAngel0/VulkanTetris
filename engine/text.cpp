@@ -8,6 +8,7 @@
 #include <iostream>
 
 #include "Renderer.h"
+#include "UI.h"
 #include "vk_vertex.h"
 #include "vk_buffer.h"
 #include "vk_device.h"
@@ -61,39 +62,41 @@ std::vector<Vertex_Text> text_create_quad(glm::vec2 pos, glm::vec2 size, glm::ve
     };
 }
 
-void do_text(Text_System& text_system, std::string text, glm::vec3 color)
+void do_text(UI_STATE* ui_state, std::string text, glm::vec2 pos, glm::vec3 color, float font_size)
 {
+    if (pos.x > 100 || pos.x < 0 || pos.y > 100 || pos.y < 0)
+    {
+        printf("YOU ARE STUPID 2: TEXT");
+    }
 
+    //move to the shader as a push constant
+    float screen_width = ui_state->push_constants.screenSize.x;
+    float screen_height = ui_state->push_constants.screenSize.y;
     //std::vector<Vertex_Text> new_quad = text_create_quad({0.5f,0.5f}, {0.1f,0.1f}, {1.0f,1.0f,1.0f});
-    float x = 10.0f; // cursor position
-    float y = 50.0f; //TODO: offset for now, will add in wanted location later
 
-    float screen_width = text_system.push_constants.screenSize.x;
-    float screen_height = text_system.push_constants.screenSize.y;
+
+    glm::vec2 converted_pos = pos / 100.0f;
+    glm::vec2 final_pos = {
+        screen_width * converted_pos.x,
+        screen_height * converted_pos.y
+    };
+
+    float font_scalar = font_size / ui_state->text_system.default_font_size;
+
 
     for (const char& c : text)
     {
         if (c < 32 || c >= 128) continue; // skip unsupported characters
-        Glyph& g = text_system.glyphs[c - 32];
-
+        Glyph& g = ui_state->text_system.glyphs[c - 32];
 
 
         // Quad position in screen coords
-        float xpos = x + g.xoff;
-        float ypos = y - g.yoff;
-        float w = static_cast<float>(g.width);
-        float h = static_cast<float>(g.height);
+        float xpos = final_pos.x + g.xoff*font_scalar;
+        float ypos = final_pos.y + g.yoff*font_scalar;
+        float w = static_cast<float>(g.width) * font_scalar;
+        float h = static_cast<float>(g.height) * font_scalar;
 
         //printf("xpos %f, ypos%f, w%f, h%f\n", xpos, ypos, w, h);
-
-
-        /*
-        // Convert screen coords to NDC [-1,1]
-        float ndc_x0 = (xpos / screen_width) * 2.0f - 1.0f;
-        float ndc_y0 = 1.0f - (ypos / screen_height) * 2.0f; // invert Y
-        float ndc_x1 = ((xpos + w) / screen_width) * 2.0f - 1.0f;
-        float ndc_y1 = 1.0f - ((ypos + h) / screen_height) * 2.0f;
-        */
 
         // Convert screen coords to NDC [-1,1]
         float ndc_x0 = (xpos / screen_width) * 2.0f - 1.0f;
@@ -129,9 +132,7 @@ void do_text(Text_System& text_system, std::string text, glm::vec3 color)
         };*/
 
 
-
-
-        uint16_t base_index = static_cast<uint16_t>(text_system.dynamic_vertices.size());
+        uint16_t base_index = static_cast<uint16_t>(ui_state->text_system.dynamic_vertices.size());
 
 
         // create indices (two triangles per quad)
@@ -145,20 +146,20 @@ void do_text(Text_System& text_system, std::string text, glm::vec3 color)
         };
 
         // Add vertices
-        text_system.dynamic_vertices.insert(text_system.dynamic_vertices.end(), new_quad.begin(),
+        ui_state->text_system.dynamic_vertices.insert(ui_state->text_system.dynamic_vertices.end(), new_quad.begin(),
                                             new_quad.end());
 
         // Add indices
-        text_system.dynamic_indices.insert(text_system.dynamic_indices.end(),
+        ui_state->text_system.dynamic_indices.insert(ui_state->text_system.dynamic_indices.end(),
                                            quad_indices.begin(), quad_indices.end());
 
-        x += g.advance; // move offset forward
+        final_pos.x += g.advance * font_scalar; // move offset forward
     }
 
 }
 
-void do_text_screen_percentage(Text_System& text_system, std::string text, glm::vec2 pos, glm::vec2 screen_percentage_size, glm::vec3 color, float
-                               font_size, bool use_outline)
+void do_text_screen_percentage(UI_STATE* ui_state, std::string text, glm::vec2 pos, glm::vec2 screen_percentage_size, glm::vec3 color, float
+                               font_size)
 {
 
 
@@ -175,8 +176,8 @@ void do_text_screen_percentage(Text_System& text_system, std::string text, glm::
     //std::vector<Vertex_Text> new_quad = text_create_quad({0.5f,0.5f}, {0.1f,0.1f}, {1.0f,1.0f,1.0f});
 
     //move to the shader as a push constant
-    float screen_width = text_system.push_constants.screenSize.x;
-    float screen_height = text_system.push_constants.screenSize.y;
+    float screen_width = ui_state->push_constants.screenSize.x;
+    float screen_height = ui_state->push_constants.screenSize.y;
 
     //convert 0-00 -> 0-1
     glm::vec2 converted_pos = pos / 100.0f;
@@ -193,12 +194,12 @@ void do_text_screen_percentage(Text_System& text_system, std::string text, glm::
 
     //We take the desired font size, scale it down proportional to the font size we created it at
     //final size of the font ex: 36/48 = 0.75, 48*0.75 = 36
-    float font_scalar = font_size/text_system.default_font_size;
+    float font_scalar = font_size/ui_state->text_system.default_font_size;
 
     for (const char& c : text)
     {
         if (c < 32 || c >= 128) continue; // skip unsupported characters
-        Glyph& g = text_system.glyphs[c - 32];
+        Glyph& g = ui_state->text_system.glyphs[c - 32];
 
 
         //take the x position and move it left based on the size we wanted it at
@@ -253,68 +254,7 @@ void do_text_screen_percentage(Text_System& text_system, std::string text, glm::
             {{ndc_x1, ndc_y0}, {1.0f,1.0f,0.0f}, {uv1.x, uv0.y}},
         };*/
 
-
-        //black outline behind the intended text we wish to render
-        //it might not actually be possible using this texture method, It would be better to use signed distance fields
-        if (use_outline)
-        {
-
-            //scales the texture
-            //TODO: rn it scales from the top left and then out, but i want it to scale from the center
-            //TODO: it scales from the center but it still looks wrong
-            float outline_scalar = 1.1f;
-            float outline_w = static_cast<float>(g.width) * font_scalar * outline_scalar;
-            float outline_h = static_cast<float>(g.height) * font_scalar * (outline_scalar);
-
-            //printf("xpos %f, ypos%f, w%f, h%f\n", xpos, ypos, w, h);
-
-            //get the center of the quad/text
-            float center_x = xpos + 0.5f * w;
-            float center_y = ypos + 0.5f * h;
-
-            //ive already made the quad, so i can overwrite the size here
-            // Convert screen coords to NDC [-1,1]
-            //the idea is that instead of the normal position we take the cetner and then offset it
-             ndc_x0 = ((center_x - outline_w * 0.5f) / screen_width) * 2.0f - 1.0f;
-             ndc_x1 = ((center_x + outline_w * 0.5f) / screen_width) * 2.0f - 1.0f;
-             ndc_y0 = ((center_y - outline_h * 0.5f) / screen_height) * 2.0f - 1.0f;
-             ndc_y1 = ((center_y + outline_h * 0.5f) / screen_height) * 2.0f - 1.0f;
-
-            std::vector<Vertex_Text> quad_outline = {
-                {{ndc_x0, ndc_y0}, {0.0f, 0.0f,0.0f}, {uv0.x, uv0.y}},
-                {{ndc_x0, ndc_y1}, {0.0f, 0.0f,0.0f}, {uv0.x, uv1.y}},
-                {{ndc_x1, ndc_y1}, {0.0f, 0.0f,0.0f}, {uv1.x, uv1.y}},
-                {{ndc_x1, ndc_y0}, {0.0f, 0.0f,0.0f}, {uv1.x, uv0.y}},
-            };
-
-
-            //do it again for outline
-            uint16_t base_index_outline = static_cast<uint16_t>(text_system.dynamic_vertices.size());
-
-
-            // create indices (two triangles per quad)
-            std::vector<uint16_t> quad_indices_outline = {
-                static_cast<uint16_t>(base_index_outline + 0),
-                static_cast<uint16_t>(base_index_outline + 1),
-                static_cast<uint16_t>(base_index_outline + 2),
-                static_cast<uint16_t>(base_index_outline + 2),
-                static_cast<uint16_t>(base_index_outline + 3),
-                static_cast<uint16_t>(base_index_outline + 0)
-            };
-
-            // Add outline vertices
-            text_system.dynamic_vertices.insert(text_system.dynamic_vertices.end(), quad_outline.begin(),
-                                                quad_outline.end());
-
-            // Add outline indices
-            text_system.dynamic_indices.insert(text_system.dynamic_indices.end(),
-                                               quad_indices_outline.begin(), quad_indices_outline.end());
-        }
-
-        uint16_t base_index = static_cast<uint16_t>(text_system.dynamic_vertices.size());
-
-
-
+        uint16_t base_index = static_cast<uint16_t>(ui_state->text_system.dynamic_vertices.size());
 
         // create indices (two triangles per quad)
         std::vector<uint16_t> quad_indices = {
@@ -327,14 +267,12 @@ void do_text_screen_percentage(Text_System& text_system, std::string text, glm::
         };
 
         // Add vertices
-        text_system.dynamic_vertices.insert(text_system.dynamic_vertices.end(), new_quad.begin(),
+        ui_state->text_system.dynamic_vertices.insert(ui_state->text_system.dynamic_vertices.end(), new_quad.begin(),
                                             new_quad.end());
 
         // Add indices
-        text_system.dynamic_indices.insert(text_system.dynamic_indices.end(),
+        ui_state->text_system.dynamic_indices.insert(ui_state->text_system.dynamic_indices.end(),
                                            quad_indices.begin(), quad_indices.end());
-
-
 
         final_pos.x += g.advance * font_scalar; // move offset forward
     }
@@ -418,8 +356,14 @@ void text_vertex_buffer_update(Vulkan_Context& vulkan_context, Command_Buffer_Co
 
 }
 
-void text_system_init()
+void text_system_init(Text_System& text_system)
 {
+
+    text_system.default_font_size = 128.0f; // the larger the more clear the text looks
+    Texture font_texture{};
+    std::vector<Vertex_Text> dynamic_vertices{};
+    std::vector<uint16_t> dynamic_indices{};
+
 }
 
 bool load_font(Text_System& text_system, const char* filepath,
@@ -569,15 +513,13 @@ bool load_font(Text_System& text_system, const char* filepath,
 }
 
 
-void text_update(Vulkan_Context& vulkan_context, Command_Buffer_Context& command_buffer_context,
-    Buffer_Context& buffer_context, Text_System& text_system)
+void text_update(Text_System& text_system, Screen_Size_Push_Constants push_constants)
 {
     text_system.dynamic_indices.clear();
     text_system.dynamic_vertices.clear();
 
     //do_text(text_system, "HELLO WORLD!", {1.0f,1.0f,0.0f});
-    do_text_screen_percentage(text_system, "HELLO WORLD!",{50.0f,50.0f}, {20.0f, 20.0f}, {1.0f,1.0f,0.0f}, 36.0f, true);
+    //do_text_screen_percentage(text_system, push_constants, "HELLO WORLD!",{50.0f,50.0f}, {20.0f, 20.0f}, {1.0f,1.0f,0.0f}, 36.0f, true);
 
-    text_vertex_buffer_update(vulkan_context, command_buffer_context, buffer_context, text_system);
 
 }

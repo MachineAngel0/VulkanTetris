@@ -10,9 +10,7 @@
 #include <string>
 
 
-//#include "UI.h"
-
-
+struct UI_STATE;
 struct Descriptor;
 struct Text_System;
 struct Command_Buffer_Context;
@@ -104,7 +102,7 @@ void init_vulkan(Vulkan_Context& vulkan_context,
                  Command_Buffer_Context& command_buffer_context, Semaphore_Fences_Context& semaphore_fences_context);
 
 void init_UI_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context, Graphics_Context& ui_graphics_context,
-                    Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info);
+                    Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context, Buffer_Context& ui_buffer_context, UI_STATE* ui_state);
 
 void init_Text_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
                       Graphics_Context& text_graphics_context, Graphics_Context& graphics_context,
@@ -118,8 +116,8 @@ void init_Text_vulkan(Vulkan_Context& vulkan_context, Swapchain_Context& swapcha
 void draw_frame(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context, Swapchain_Context& swapchain_context,
                 Graphics_Context& graphics_context, Command_Buffer_Context& command_buffer_context,
                 Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info, Semaphore_Fences_Context& semaphore_fences_info,
-                Graphics_Context& ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info,
-                Graphics_Context& text_graphics_context, Buffer_Context& text_buffer_context, Text_System& text_system, Descriptor& text_descriptor);
+                Graphics_Context& ui_graphics_context, Buffer_Context& ui_buffer_context, UI_STATE* ui_state,
+                Graphics_Context& text_graphics_context, Buffer_Context& text_buffer_context, Descriptor& text_descriptor);
 
 
 /*CLEANUP*/
@@ -159,7 +157,7 @@ VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& presen
 
 /* SWAPCHAIN RECREATION */
 void recreate_swapchain(Vulkan_Context& vulkan_context, GLFW_Window_Context& window_context,
-                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context, UI_DRAW_INFO& ui_draw_info);
+                        Swapchain_Context& swapchain_context, Graphics_Context& graphics_context, UI_STATE* ui_state);
 
 void cleanup_swapchain(Vulkan_Context& vulkan_context, Swapchain_Context& swapchain_context,
                        Graphics_Context& graphics_context);
@@ -201,8 +199,8 @@ void create_sync_objects(Vulkan_Context& vulkan_context, Semaphore_Fences_Contex
 /*RECORD BUFFER*/
 void record_command_buffer(Swapchain_Context& swapchain_context, Command_Buffer_Context& command_buffer_context,
                            Graphics_Context& graphics_context, Buffer_Context& buffer_context, VERTEX_DYNAMIC_INFO& vertex_info, uint32_t image_index, uint32_t current_frame, Graphics_Context
-                           & ui_graphics_context, Buffer_Context& ui_buffer_context, UI_DRAW_INFO& ui_draw_info, Graphics_Context&
-                           text_graphics_context, Buffer_Context& text_buffer_context, Text_System& text_system, Descriptor& text_descriptor);
+                           &ui_graphics_context, Buffer_Context& ui_buffer_context, UI_STATE* ui_state, Graphics_Context&
+                           text_graphics_context, Buffer_Context& text_buffer_context, Descriptor& text_descriptor);
 
 
 

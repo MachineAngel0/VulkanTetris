@@ -670,6 +670,12 @@ struct Game_State
     Tetromino current_tetromino;
     float move_timer = 5.0;
     float move_trigger = 0.0;
+
+    std::vector<Game_State*> start_game;
+    std::vector<Game_State*> init_play_game; // transition state into play game
+    std::vector<Game_State*> play_game;
+    std::vector<Game_State*> game_over;
+
 };
 
 
@@ -715,12 +721,15 @@ inline void update_game(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_dyna
             //we lose if the current tetromino is on any part of the grey
             if (game_state->current_tetromino.grid_position.y <= 0)
             {
-                printf("you lost\n");
-                clear_vertex_info(vertex_dynamic_info);
+                //printf("you lost\n");
+                //clear_vertex_info(vertex_dynamic_info); // dont clear this
+                game_state->play_game.clear();
+                game_state->game_over.emplace_back(game_state);
+                /*
                 game_state->tetris_grid = create_grid(vertex_dynamic_info, GRID_COLUMN, GRID_ROW);
                 //game_state->current_block = create_block(vertex_info, O);
                 game_state->current_tetromino = pick_new_tetromino(vertex_dynamic_info);
-                tetris_clock_init(game_state->tetris_clock);
+                tetris_clock_init(game_state->tetris_clock);*/
             }
             else
             {
@@ -739,7 +748,11 @@ inline void update_game(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_dyna
 inline Game_State* init_game_state()
 {
     Game_State* temp_game_state = static_cast<Game_State *>(malloc(sizeof(Game_State)));
+
     //we want to begin in start game mode
+    temp_game_state->start_game.emplace_back(temp_game_state);
+
+
 
     return temp_game_state;
 }
@@ -758,34 +771,41 @@ inline void init_play_state(Game_State* game_state, VERTEX_DYNAMIC_INFO& vertex_
     vertex_info.vertex_buffer_should_update = true;
 }
 
-inline std::vector<Game_State*> start_game;
-inline std::vector<Game_State*> init_play_game; // transition state into play game
-inline std::vector<Game_State*> play_game;
-inline std::vector<Game_State*> game_over;
+
 
 inline void game_update_DOD(Game_State* game_state, UI_STATE* ui_state, VERTEX_DYNAMIC_INFO& vertex_dynamic_info, float dt)
 {
 
-    for (auto& game : start_game)
+    for (auto& game : game_state->start_game)
     {
         //Our start screen
-        ui_draw_button_rect_screen_size_percentage(ui_state, glm::vec2{50,50}, glm::vec2{20,20}, glm::vec3{1.0,0.0,0.0}, glm::vec3{0.0,0.0,1.0}, glm::vec3{0.0,1.0,0.0});
+        if (do_button_new_text(ui_state, UIID{0, 0}, glm::vec2{30,40}, glm::vec2{50,25}, "Start Game", {10.0,8.0}, glm::vec3{1.0,0.0,0.0}, glm::vec3{0.0,0.0,1.0}, glm::vec3{0.0,1.0,0.0}))
+        {
+            game_state->init_play_game.push_back(game);
+            game_state->start_game.clear();
+        }
+
 
     };
-    for (auto& game : init_play_game)
+    for (auto& game : game_state->init_play_game)
     {
         init_play_state(game, vertex_dynamic_info);
-        play_game.push_back(game);
+        game_state->play_game.push_back(game);
     }
-    init_play_game.clear();
+    game_state->init_play_game.clear();
 
-    for (auto& game : play_game)
+    for (auto& game : game_state->play_game)
     {
         update_game(game, vertex_dynamic_info, dt);
     }
-    for (auto& game : game_over)
+    for (auto& game : game_state->game_over)
     {
-
+        //Game Over
+        if (do_button_new_text(ui_state, UIID{0, 0}, glm::vec2{30,40}, glm::vec2{50,25}, "Start Over", {10.0,8.0}, glm::vec3{1.0,0.0,0.0}, glm::vec3{0.0,0.0,1.0}, glm::vec3{0.0,1.0,0.0}))
+        {
+            game_state->init_play_game.push_back(game);
+            game_state->game_over.clear();
+        }
     }
 
 
