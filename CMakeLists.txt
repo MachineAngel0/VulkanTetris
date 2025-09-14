@@ -76,3 +76,7 @@ target_link_options(VulkanTetris PRIVATE
         -static-libstdc++
         -static
 )
+
+
+
+

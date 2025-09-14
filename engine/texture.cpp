@@ -1,6 +1,7 @@
 ﻿#include "texture.h"
 #include <stb_image.h>
 #include <stdexcept>
+#include <iostream>
 
 #include "vk_buffer.h"
 #include "vk_command_buffer.h"

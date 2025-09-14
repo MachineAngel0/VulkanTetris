@@ -6,7 +6,6 @@
 #include <chrono>
 #include <unordered_map>
 #include <vector>
-#include <bits/fs_fwd.h>
 #include <glm/glm.hpp>
 
 #include "clock.h"
