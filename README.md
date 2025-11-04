@@ -10,11 +10,11 @@ I hope that someone can use this as an example, as there aren't many other examp
 
 
 ### BUILD:
-    -cmake --build build --config Debug
-or
-
-    -cmake --build build --config Release
-- Alternatively you could go into the cmake-build-debug or cmake-build-release and launch the VulkanTetris.exe 
+    mkdir build
+    cd build
+    cmake ..
+    cd ../
+    cmake --build build --config Release
 
 
 ### HOW TO PLAY:
